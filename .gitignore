@@ -1,0 +1,60 @@
+# 컴파일된 실행 파일
+*.exe
+*.exec
+*.out
+*.app
+a.out
+
+.o
+
+# 라이브러리 파일
+*.a
+*.la
+*.lib
+*.so
+*.so.*
+*.dylib
+
+# 디버그 파일
+*.dSYM/
+*.su
+*.idb
+*.pdb
+
+# IDE 관련 파일
+.vscode/
+.vs/
+*.vcxproj*
+*.sln
+*.suo
+*.user
+
+# macOS 시스템 파일
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# 임시 파일
+*~
+*.swp
+*.tmp
+
+# 빌드 디렉토리
+build/
+bin/
+obj/
+debug/
+release/
+
+# CMake 관련 파일
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
+
+# 로그 파일
+*.log
+
+# 백업 파일
+*.bak
+*.backup
