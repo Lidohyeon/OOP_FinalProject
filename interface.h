@@ -5,6 +5,9 @@
 #include <ncurses.h>
 #include <locale.h>
 
+#include "GameManger.h"
+#include "SentenceManager.h"
+
 class Screen
 {
 public:
@@ -21,12 +24,14 @@ private:
     int gameWidth;
     int gameHeight;
     bool gameRunning;
-    int gameAreaWidth;  // 게임 영역 폭
-    int scoreAreaWidth; // 점수판 영역 폭
+    int gameAreaWidth;                // 게임 영역 폭
+    int scoreAreaWidth;               // 점수판 영역 폭
+    GameManager *gameManager;         // GameManager 추가
+    SentenceManager *sentenceManager; // SentenceManager 추가
 
 public:
     PlayScreen(int level) : currentLevel(level), gameWidth(120), gameHeight(50), gameRunning(true),
-                            gameAreaWidth(85), scoreAreaWidth(33)
+                            gameAreaWidth(60), scoreAreaWidth(58) // 입력 공간을 위해 영역 조정
     {
         // 로케일 설정
         setlocale(LC_ALL, "");
@@ -58,10 +63,17 @@ public:
 
         clear();
         refresh();
+
+        // GameManager 및 SentenceManager 생성
+        gameManager = new GameManager(currentLevel);
+        sentenceManager = new SentenceManager();
+        gameManager->startGame();
     }
 
     ~PlayScreen()
     {
+        delete gameManager;
+        delete sentenceManager;
         endwin();
     }
 
@@ -75,36 +87,49 @@ public:
     {
         clear();
 
-        // 상단 헤더 (ASCII 문자 사용)
+        // 게임 시간 업데이트
+        gameManager->updateTime();
+
+        // 게임 종료 조건 확인
+        if (gameManager->checkGameEnd())
+        {
+            gameRunning = false;
+        }
+
+        // 상단 헤더 수정 (3개 영역)
         attron(COLOR_PAIR(1));
         mvprintw(0, 0, "+");
         for (int i = 1; i < gameAreaWidth; i++)
             mvprintw(0, i, "-");
         mvprintw(0, gameAreaWidth, "+");
-        for (int i = gameAreaWidth + 1; i < gameWidth - 1; i++)
+        for (int i = gameAreaWidth + 1; i < gameAreaWidth + 30; i++)
+            mvprintw(0, i, "-");
+        mvprintw(0, gameAreaWidth + 30, "+");
+        for (int i = gameAreaWidth + 31; i < gameWidth - 1; i++)
             mvprintw(0, i, "-");
         mvprintw(0, gameWidth - 1, "+");
 
         mvprintw(1, 0, "|");
         mvprintw(1, 2, "SNOW MAN GAME - Level %d", currentLevel);
-        for (int i = 25; i < gameAreaWidth; i++)
-            mvprintw(1, i, " ");
         mvprintw(1, gameAreaWidth, "|");
-        mvprintw(1, gameAreaWidth + 10, "GAME STATUS");
-        for (int i = gameAreaWidth + 21; i < gameWidth - 1; i++)
-            mvprintw(1, i, " ");
+        mvprintw(1, gameAreaWidth + 5, "GAME STATUS");
+        mvprintw(1, gameAreaWidth + 30, "|");
+        mvprintw(1, gameAreaWidth + 35, "WORD INPUT");
         mvprintw(1, gameWidth - 1, "|");
 
         mvprintw(2, 0, "+");
         for (int i = 1; i < gameAreaWidth; i++)
             mvprintw(2, i, "-");
         mvprintw(2, gameAreaWidth, "+");
-        for (int i = gameAreaWidth + 1; i < gameWidth - 1; i++)
+        for (int i = gameAreaWidth + 1; i < gameAreaWidth + 30; i++)
+            mvprintw(2, i, "-");
+        mvprintw(2, gameAreaWidth + 30, "+");
+        for (int i = gameAreaWidth + 31; i < gameWidth - 1; i++)
             mvprintw(2, i, "-");
         mvprintw(2, gameWidth - 1, "+");
         attroff(COLOR_PAIR(1));
 
-        // 게임 영역과 점수판 영역
+        // 게임 영역, 점수판, 입력 영역
         for (int row = 3; row < gameHeight - 2; row++)
         {
             mvprintw(row, 0, "|");
@@ -112,7 +137,7 @@ public:
             // 왼쪽 게임 영역
             for (int col = 1; col < gameAreaWidth; col++)
             {
-                if (row == 25 && col == 42)
+                if (row == 25 && col == 30)
                 {
                     attron(COLOR_PAIR(2));
                     mvprintw(row, col, "@"); // 눈사람
@@ -149,9 +174,9 @@ public:
                 }
             }
 
-            mvprintw(row, gameAreaWidth, "|"); // 중간 구분선
+            mvprintw(row, gameAreaWidth, "|"); // 첫 번째 구분선
 
-            // 오른쪽 점수판 영역
+            // 중간 점수판 영역 (GameManager 데이터 사용)
             attron(COLOR_PAIR(5));
             int info_row = row - 3;
             switch (info_row)
@@ -160,68 +185,102 @@ public:
                 mvprintw(row, gameAreaWidth + 2, "Level: %d", currentLevel);
                 break;
             case 3:
-                mvprintw(row, gameAreaWidth + 2, "Score: 00000");
+                mvprintw(row, gameAreaWidth + 2, "Score: %d", gameManager->getTotalScore());
                 break;
             case 5:
-                mvprintw(row, gameAreaWidth + 2, "Lives: <3 <3 <3");
+                mvprintw(row, gameAreaWidth + 2, "Time: %s", gameManager->getFormattedTime().c_str());
                 break;
             case 7:
-                mvprintw(row, gameAreaWidth + 2, "Time: 00:00");
+                mvprintw(row, gameAreaWidth + 2, "Lives: <3 <3 <3");
                 break;
             case 9:
-                mvprintw(row, gameAreaWidth + 2, "-------------------------");
+                mvprintw(row, gameAreaWidth + 2, "-------------------");
                 break;
             case 11:
-                mvprintw(row, gameAreaWidth + 2, "Snowflakes: 0/10");
+                mvprintw(row, gameAreaWidth + 2, "Snow Score: %d", gameManager->getSnowflakeScore());
                 break;
             case 13:
-                mvprintw(row, gameAreaWidth + 2, "Targets Hit: 0/5");
+                mvprintw(row, gameAreaWidth + 2, "Target Score: %d", gameManager->getTargetScore());
                 break;
             case 15:
-                mvprintw(row, gameAreaWidth + 2, "-------------------------");
+                mvprintw(row, gameAreaWidth + 2, "Word Bonus: %d", sentenceManager->getScore());
                 break;
             case 17:
-                mvprintw(row, gameAreaWidth + 2, "Controls:");
-                break;
-            case 18:
-                mvprintw(row, gameAreaWidth + 3, "W - Move Up");
+                mvprintw(row, gameAreaWidth + 2, "-------------------");
                 break;
             case 19:
-                mvprintw(row, gameAreaWidth + 3, "S - Move Down");
-                break;
-            case 20:
-                mvprintw(row, gameAreaWidth + 3, "A - Move Left");
+                mvprintw(row, gameAreaWidth + 2, "ESC - Back to Menu");
                 break;
             case 21:
-                mvprintw(row, gameAreaWidth + 3, "D - Move Right");
-                break;
-            case 22:
-                mvprintw(row, gameAreaWidth + 3, "SPACE - Jump");
-                break;
-            case 24:
-                mvprintw(row, gameAreaWidth + 2, "ESC - Pause");
-                break;
-            case 25:
-                mvprintw(row, gameAreaWidth + 2, "Q - Quit to Menu");
-                break;
-            case 27:
-                mvprintw(row, gameAreaWidth + 2, "-------------------------");
-                break;
-            case 29:
-                mvprintw(row, gameAreaWidth + 2, "Objective:");
-                break;
-            case 30:
-                mvprintw(row, gameAreaWidth + 3, "Collect snowflakes");
-                break;
-            case 31:
-                mvprintw(row, gameAreaWidth + 3, "and reach targets! X");
+                mvprintw(row, gameAreaWidth + 2, "TAB - Next Input");
                 break;
             default:
-                for (int i = gameAreaWidth + 1; i < gameWidth - 1; i++)
+                for (int i = gameAreaWidth + 1; i < gameAreaWidth + 30; i++)
                     mvprintw(row, i, " ");
                 break;
             }
             attroff(COLOR_PAIR(5));
+
+            mvprintw(row, gameAreaWidth + 30, "|"); // 두 번째 구분선
+
+            // 오른쪽 단어 입력 영역
+            attron(COLOR_PAIR(3));
+            int input_row = row - 3;
+            const auto &userInputs = sentenceManager->getInputHandler()->getUserInputs();
+            int currentIdx = sentenceManager->getInputHandler()->getCurrentInputIndex();
+
+            if (input_row >= 1 && input_row <= 8)
+            {
+                int inputIndex = input_row - 1;
+                if (inputIndex == currentIdx)
+                {
+                    attron(COLOR_PAIR(2) | A_BOLD); // 현재 입력 중인 필드 강조
+                    mvprintw(row, gameAreaWidth + 32, "[%d] > %s_",
+                             inputIndex + 1, userInputs[inputIndex].c_str());
+                    attroff(COLOR_PAIR(2) | A_BOLD);
+                }
+                else
+                {
+                    mvprintw(row, gameAreaWidth + 32, "[%d]   %s",
+                             inputIndex + 1, userInputs[inputIndex].c_str());
+                }
+            }
+            else if (input_row == 10)
+            {
+                mvprintw(row, gameAreaWidth + 32, "----------------------");
+            }
+            else if (input_row == 11)
+            {
+                mvprintw(row, gameAreaWidth + 32, "Completed: %d/8",
+                         sentenceManager->getInputHandler()->getCompletedInputsCount());
+            }
+            else if (input_row == 12)
+            {
+                mvprintw(row, gameAreaWidth + 32, "Matches: %d",
+                         sentenceManager->getCorrectMatches());
+            }
+            else if (input_row == 14)
+            {
+                mvprintw(row, gameAreaWidth + 32, "Instructions:");
+            }
+            else if (input_row == 15)
+            {
+                mvprintw(row, gameAreaWidth + 32, "Type words and");
+            }
+            else if (input_row == 16)
+            {
+                mvprintw(row, gameAreaWidth + 32, "press TAB to move");
+            }
+            else if (input_row == 17)
+            {
+                mvprintw(row, gameAreaWidth + 32, "to next input");
+            }
+            else
+            {
+                for (int i = gameAreaWidth + 31; i < gameWidth - 1; i++)
+                    mvprintw(row, i, " ");
+            }
+            attroff(COLOR_PAIR(3));
 
             mvprintw(row, gameWidth - 1, "|");
         }
@@ -238,7 +297,25 @@ public:
         attroff(COLOR_PAIR(1));
 
         // 상태 메시지 영역
-        mvprintw(gameHeight - 1, 2, "Terminal Size: %dx%d | Press ESC to pause, Q to quit", gameWidth, gameHeight);
+        if (gameManager->isTimeUp())
+        {
+            attron(COLOR_PAIR(4) | A_BOLD); // 빨간색
+            mvprintw(gameHeight - 1, 2, "TIME UP! Final Score: %d | Press ESC to return to menu",
+                     gameManager->getTotalScore());
+            attroff(COLOR_PAIR(4) | A_BOLD);
+        }
+        else if (!gameManager->isGameRunning() && gameRunning)
+        {
+            attron(COLOR_PAIR(2) | A_BOLD); // 노란색
+            mvprintw(gameHeight - 1, 2, "Game Complete! Score: %d | Press ESC to return to menu",
+                     gameManager->getTotalScore());
+            attroff(COLOR_PAIR(2) | A_BOLD);
+        }
+        else
+        {
+            mvprintw(gameHeight - 1, 2, "Playing... | Remaining: %s | Score: %d | ESC: Back to Menu",
+                     gameManager->getFormattedTime().c_str(), gameManager->getTotalScore());
+        }
 
         refresh();
     }
@@ -261,42 +338,54 @@ public:
         {
             UpdateScreen();
 
-            key = ::getch(); // ncurses getch() 사용
+            // 논블로킹 입력을 위해 timeout 설정
+            timeout(100); // 100ms 대기
+            key = ::getch();
 
-            switch (key)
-            {
-            case 27: // ESC
-                mvprintw(gameHeight - 1, 2, "Game Paused! Press any key to continue...");
-                refresh();
-                ::getch(); // ncurses getch() 사용
-                break;
-            case 'q':
-            case 'Q':
-                gameRunning = false;
-                endwin();
-                printf("\n게임을 종료하고 메인 메뉴로 돌아갑니다...\n");
-                break;
-            case 'w':
-            case 'W':
-                // 위로 이동
-                break;
-            case 's':
-            case 'S':
-                // 아래로 이동
-                break;
-            case 'a':
-            case 'A':
-                // 왼쪽으로 이동
-                break;
-            case 'd':
-            case 'D':
-                // 오른쪽으로 이동
-                break;
-            case ' ':
-                // 액션 (점프, 공격 등)
-                break;
+            if (key != ERR)
+            { // 키가 입력된 경우만 처리
+                switch (key)
+                {
+                case 27: // ESC - 메뉴로 돌아가기
+                    gameRunning = false;
+                    break;
+                case '\t': // TAB 키 - 다음 입력 필드로 이동
+                case KEY_DOWN:
+                    sentenceManager->getInputHandler()->nextInput();
+                    break;
+                case KEY_UP:
+                    sentenceManager->getInputHandler()->previousInput();
+                    break;
+                default:
+                    // 다른 키들은 InputHandler로 전달
+                    if (sentenceManager->getInputHandler()->handleInput(key))
+                    {
+                        sentenceManager->checkAnswers(); // 입력 완료 시 답안 체크
+                    }
+                    break;
+                }
             }
         }
+
+        // 게임 종료 시 최종 점수 계산
+        gameManager->endGame();
+
+        // 최종 결과 화면 표시
+        clear();
+        attron(COLOR_PAIR(1) | A_BOLD);
+        mvprintw(gameHeight / 2 - 3, gameWidth / 2 - 15, "GAME OVER");
+        mvprintw(gameHeight / 2 - 1, gameWidth / 2 - 20, "Final Score: %d", gameManager->getTotalScore());
+        mvprintw(gameHeight / 2, gameWidth / 2 - 20, "Time Bonus: %d", gameManager->getTimeBonus());
+        mvprintw(gameHeight / 2 + 1, gameWidth / 2 - 20, "Level Bonus: %d", gameManager->getLevelBonus());
+        mvprintw(gameHeight / 2 + 3, gameWidth / 2 - 15, "Press any key to continue...");
+        attroff(COLOR_PAIR(1) | A_BOLD);
+        refresh();
+
+        timeout(-1); // 무한 대기
+        ::getch();
+
+        endwin();
+        printf("\n게임을 종료하고 메인 메뉴로 돌아갑니다...\n");
     }
 };
 
