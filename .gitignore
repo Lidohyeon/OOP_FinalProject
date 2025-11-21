@@ -60,3 +60,4 @@ Makefile
 *.backup
 main.o
 snowman_game
+SentenceManager.o
