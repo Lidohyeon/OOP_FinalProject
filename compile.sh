@@ -1,5 +1,6 @@
 #!/bin/bash
 # OOP Final Project 컴파일 스크립트
+# window 환경에서는 g++ 대신에 다른 컴파일러를 사용해야 할 수 있습니다.
 
 echo "project compiling..."
 
