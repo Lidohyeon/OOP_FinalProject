@@ -41,7 +41,7 @@ public:
 
     virtual ~FallingObject() {}
 
-    // 생성되면 물체를 내려오게끔 하는 함수 (순수 가상 함수)
+    // 생성되면 물체를 내려오게끔 하는 함수 (가상 함수 - 오버라이드 가능)
     virtual void fall()
     {
         if (!isActive) return;
@@ -51,7 +51,7 @@ public:
         // 바닥에 도달했는지 체크
         if (y >= gameAreaHeight - 3) {
             if (!hasReachedBottom) {
-                hasReachedBottom = true;
+                hasReachedBottom = true;  // WordBlock의 경우 페널티 대상
             }
             y = gameAreaHeight - 3; // 바닥 위치 고정
         }
