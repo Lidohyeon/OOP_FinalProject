@@ -53,9 +53,21 @@ public:
 
         // 바닥에 도달했는지 체크
         if (y >= gameAreaHeight - 3) {
-            hasReachedBottom = true;
+            // 바닥에 처음 도달한 경우에만 페널티 플래그 설정
+            if (!hasReachedBottom) {
+                hasReachedBottom = true;
+            }
             y = gameAreaHeight - 3; // 바닥 위치 고정
         }
+    }
+
+    // 바닥 도달 여부를 체크하고 플래그를 리셋하는 함수 (외부에서 페널티 처리 후 호출)
+    bool checkAndResetBottomReached()
+    {
+        if (hasReachedBottom && isActive && !isInInput) {
+            return true; // 페널티 적용 필요
+        }
+        return false;
     }
 
     // 해당 눈의 단어가 입력되면 화면에서 없어지는 함수
