@@ -98,6 +98,22 @@ public:
         updateTotalScore();
     }
 
+    // 시간 감소 (객체가 바닥에 떨어졌을 때 페널티)
+    void applyTimePenalty(int seconds = 10)
+    {
+        if (!gameRunning) return;
+        
+        remainingTime -= seconds;
+        
+        // 시간이 0 이하가 되면 게임 종료
+        if (remainingTime <= 0)
+        {
+            remainingTime = 0;
+            timeUp = true;
+            gameRunning = false;
+        }
+    }
+
     void calculateTimeBonus()
     {
         if (remainingTime > 0)
