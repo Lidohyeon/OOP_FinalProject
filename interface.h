@@ -292,6 +292,7 @@ public:
         // (단어가 0개일 때 완성되는 버그 방지 위해 totalWords > 0 조건 추가)
         bool isBigSnowmanComplete = (totalWords > 0 && currentMatches == totalWords);
         
+
         // 큰 눈사람 그리기
         drawBigSnowman(12, gameAreaWidth + 18, isBigSnowmanComplete);
 
