@@ -52,6 +52,7 @@ public:
             init_pair(3, COLOR_WHITE, COLOR_BLACK);  // 눈송이
             init_pair(4, COLOR_RED, COLOR_BLACK);    // 목표물
             init_pair(5, COLOR_CYAN, COLOR_BLACK);   // 점수판
+            init_pair(6, COLOR_GREEN, COLOR_BLACK);  // 단어 블록
         }
 
         // 터미널 크기를 정확히 120x50으로 강제 설정
@@ -67,6 +68,7 @@ public:
         // GameManager 및 SentenceManager 생성
         gameManager = new GameManager(currentLevel);
         sentenceManager = new SentenceManager();
+        sentenceManager->createWordBlocks(gameAreaWidth - 2);
         gameManager->startGame();
     }
 
@@ -89,6 +91,12 @@ public:
 
         // 게임 시간 업데이트
         gameManager->updateTime();
+
+        // 단어 블록 이동 (1초 간격)
+        if (gameManager->shouldUpdateWordBlocks())
+        {
+            sentenceManager->advanceWordBlocks(gameHeight - 3);
+        }
 
         // 게임 종료 조건 확인
         if (gameManager->checkGameEnd())
@@ -284,6 +292,17 @@ public:
 
             mvprintw(row, gameWidth - 1, "|");
         }
+
+        // 단어 블록 렌더링
+        attron(COLOR_PAIR(6) | A_BOLD);
+        for (const auto &block : sentenceManager->getWordBlocks())
+        {
+            if (block.active && block.y >= 3 && block.y < gameHeight - 2)
+            {
+                mvprintw(block.y, block.x, "%s", block.word.c_str());
+            }
+        }
+        attroff(COLOR_PAIR(6) | A_BOLD);
 
         // 하단 (ASCII 문자 사용)
         attron(COLOR_PAIR(1));
