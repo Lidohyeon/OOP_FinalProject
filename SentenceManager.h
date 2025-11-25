@@ -5,6 +5,7 @@
 #include <string>
 #include <vector>
 #include <ncurses.h>
+#include "Dictionary.h"
 
 struct WordBlock
 {
@@ -60,15 +61,18 @@ private:
     int correctMatches;
     std::vector<WordBlock> wordBlocks;
     int wordAreaWidth;
+    int currentLevel;
+    int currentSentenceIndex;
 
 public:
-    SentenceManager() : correctMatches(0)
+    SentenceManager(int level) : correctMatches(0), currentLevel(level), currentSentenceIndex(0)
     {
         inputHandler = new InputHandler();
-        initializeTargetWords();
-        wordAreaWidth = 0;
-    }
+        dictionary = new Dictionary(); // Dictionary 객체 생성
 
+        // 레벨에 맞는 랜덤 문장 로드
+        loadRandomSentence(level);
+    }
     ~SentenceManager()
     {
         delete inputHandler;
@@ -93,8 +97,8 @@ public:
     int getCorrectMatches() const { return correctMatches; }
 
     // 추가: 레벨 및 문장 정보 접근
-    int getCurrentLevel() const { return currentLevel; }
-    int getCurrentSentenceIndex() const { return currentSentenceIndex; }
+    int getCurrentLevel() const { return dictionary->getCurrentLevel(); }
+    int getCurrentSentenceIndex() const { return dictionary->getCurrentSentenceIndex(); }
 
     // 추가: 전체 문장 반환 (화면에 표시용)
     std::string getFullSentence() const;

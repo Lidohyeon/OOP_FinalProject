@@ -124,15 +124,6 @@ std::string InputHandler::getInputAt(int index) const
 // ========== SentenceManager 구현 (수정됨) ==========
 
 // 수정: 생성자에서 Dictionary 생성 및 초기 문장 로드
-SentenceManager::SentenceManager(int level)
-    : correctMatches(0), currentLevel(level), currentSentenceIndex(0)
-{
-    inputHandler = new InputHandler();
-    dictionary = new Dictionary(); // Dictionary 객체 생성
-
-    // 레벨에 맞는 랜덤 문장 로드
-    loadRandomSentence(level);
-}
 
 // 삭제: initializeTargetWords() 함수 제거
 // 이유: Dictionary에서 동적으로 로드하므로 하드코딩된 단어 배열 불필요

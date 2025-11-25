@@ -246,7 +246,7 @@ public:
         refresh();
 
         gameManager = new GameManager(currentLevel);
-        sentenceManager = new SentenceManager();
+        sentenceManager = new SentenceManager(currentLevel);
         sentenceManager->createWordBlocks(gameAreaWidth - 2);
         gameManager->startGame();
     }
