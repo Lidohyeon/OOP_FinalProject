@@ -233,7 +233,7 @@ public:
         refresh();
 
         gameManager = new GameManager(currentLevel);
-        sentenceManager = new SentenceManager();
+        sentenceManager = new SentenceManager(currentLevel); // (김승완) SentenceManager가 레벨별로 다른 문장을 로드하도록 수정해서 인자추가
         gameManager->startGame();
     }
 
