@@ -222,7 +222,7 @@ void SentenceManager::advanceWordBlocks(int maxHeight)
         block.active = block.getIsActive();
 
         // 바닥 도달 체크
-        if (block.getY() >= maxHeight - 3)
+        if (block.checkAndResetBottomReached())
         {
             block.active = false;
             hasReachedBottom = true;
@@ -234,13 +234,6 @@ void SentenceManager::advanceWordBlocks(int maxHeight)
     {
         timePanalty = true;
     }
-
-    // 비활성화된 블록들 제거 (메모리 효율성)
-    wordBlocks.erase(
-        std::remove_if(wordBlocks.begin(), wordBlocks.end(),
-                       [](const WordBlock &block)
-                       { return !block.active; }),
-        wordBlocks.end());
 }
 
 void SentenceManager::createWordBlock(int maxWidth, int wordIndex)

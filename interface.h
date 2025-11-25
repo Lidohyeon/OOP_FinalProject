@@ -315,11 +315,9 @@ public:
         if (gameManager->shouldUpdateWordBlocks())
         {
             sentenceManager->advanceWordBlocks(gameHeight - 3); // maxHeight 전달
-
-            // 페널티 체크
             if (sentenceManager->getTimePanalty())
             {
-                gameManager->applyTimePenalty(10);
+                gameManager->applyTimePenalty();
                 sentenceManager->setTimePanalty(false);
             }
         }
@@ -514,7 +512,7 @@ public:
         while (gameRunning)
         {
             UpdateScreen();
-            timeout(100);
+            timeout(50);
             key = ::getch();
 
             if (key != ERR)

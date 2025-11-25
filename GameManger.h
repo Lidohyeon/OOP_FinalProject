@@ -17,6 +17,8 @@ private:
     int timeBonus;      // 시간 보너스
     int levelBonus;     // 레벨 보너스
 
+    int timepanaltyCount;
+
     // 시간 관련
     time_t startTime;  // 게임 시작 시간
     int timeLimit;     // 제한시간 (초)
@@ -50,9 +52,12 @@ public:
     GameManager(int level) : currentLevel(level), totalScore(0), snowflakeScore(0),
                              targetScore(0), timeBonus(0), levelBonus(0),
                              gameRunning(false), timeUp(false),
-                             lastWordRenderTime(0), lastWordCreateTime(0),
-                             wordRenderInterval(1), wordCreateInterval(3.0), // 0.5초에서 3초로 변경
+                             wordRenderInterval(1),
+                             lastWordRenderTime(0),
+                             lastWordCreateTime(0),
+                             wordCreateInterval(3.0), // 0.5초에서 3초로 변경
                              currentWordIndex(0), allWordsGenerated(false),
+                             timepanaltyCount(0),
                              waitingForCompletion(false)
     {
         // 레벨에 따른 제한시간 설정
@@ -60,12 +65,15 @@ public:
         {
         case 1:
             timeLimit = 180;
+
             break; // 3분
         case 2:
             timeLimit = 150;
+
             break; // 2분 30초
         case 3:
             timeLimit = 120;
+
             break; // 2분
         default:
             timeLimit = 180;
@@ -111,6 +119,7 @@ public:
         levelBonus = currentLevel * LEVEL_BONUS_BASE;
         lastWordRenderTime = startTime;
         lastWordCreateTime = startTime;
+        timepanaltyCount = 0;
 
         // 초기화
         currentWordIndex = 0;
@@ -128,12 +137,13 @@ public:
     // 시간 업데이트 및 카운트다운
     void updateTime()
     {
+
         if (!gameRunning)
             return;
 
         time_t currentTime = time(nullptr);
         int elapsedTime = (int)(currentTime - startTime);
-        remainingTime = timeLimit - elapsedTime;
+        remainingTime = timeLimit - elapsedTime - (timepanaltyCount * 10);
 
         if (remainingTime <= 0)
         {
@@ -162,10 +172,9 @@ public:
         if (!gameRunning)
             return;
 
-        remainingTime -= seconds;
-
+        timepanaltyCount++;
         // 시간이 0 이하가 되면 게임 종료
-        if (remainingTime <= 0)
+        if ((remainingTime - timepanaltyCount * 10) <= 0)
         {
             remainingTime = 0;
             timeUp = true;
@@ -254,17 +263,6 @@ public:
     // 단어 생성 처리 (interface.h에서 호출)
     bool handleWordGeneration(SentenceManager *sentenceManager)
     {
-        // 바닥에 닿은 단어 블록 체크 및 시간 페널티 적용
-        auto &wordBlocks = sentenceManager->getWordBlocks(); // const 제거
-        for (auto &block : wordBlocks)                       // const 제거
-        {
-            // FallingObject의 checkAndResetBottomReached() 사용
-            if (block.checkAndResetBottomReached())
-            {
-                applyTimePenalty(10); // 10초 감소
-                break;                // 한 번에 하나씩만 처리
-            }
-        }
 
         if (shouldCreateWordBlock() && currentWordIndex < 8)
         {
