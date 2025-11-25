@@ -1,5 +1,6 @@
 #include "SentenceManager.h"
 #include <algorithm>
+#include <cstdlib>
 
 bool InputHandler::handleInput(int key)
 {
@@ -106,5 +107,53 @@ void SentenceManager::checkAnswers()
         {
             correctMatches++;
         }
+    }
+}
+
+void SentenceManager::createWordBlocks(int maxWidth)
+{
+    wordBlocks.clear();
+    wordAreaWidth = maxWidth;
+    std::srand(static_cast<unsigned int>(std::time(nullptr)));
+
+    int minX = 2;
+    int maxX = wordAreaWidth - 10; // 단어 길이를 고려한 여유 공간
+
+    for (const auto &word : targetWords)
+    {
+        WordBlock block;
+        block.word = word;
+        block.y = 3; // 게임 영역 첫 줄
+        block.x = minX + (std::rand() % std::max(1, maxX - minX));
+        block.active = true;
+        wordBlocks.push_back(block);
+    }
+}
+
+void SentenceManager::advanceWordBlocks(int maxHeight)
+{
+    bool anyActive = false;
+
+    for (auto &block : wordBlocks)
+    {
+        if (!block.active)
+        {
+            continue;
+        }
+
+        anyActive = true;
+        if (block.y < maxHeight)
+        {
+            block.y += 1;
+        }
+        else
+        {
+            block.active = false;
+        }
+    }
+
+    if (!anyActive && wordAreaWidth > 0)
+    {
+        createWordBlocks(wordAreaWidth);
     }
 }

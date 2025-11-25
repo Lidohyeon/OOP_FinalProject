@@ -1,9 +1,18 @@
 #ifndef SENTENCEMANAGER_H
 #define SENTENCEMANAGER_H
 
+#include <ctime>
 #include <string>
 #include <vector>
 #include <ncurses.h>
+
+struct WordBlock
+{
+    std::string word;
+    int x;
+    int y;
+    bool active;
+};
 
 class InputHandler
 {
@@ -43,12 +52,15 @@ private:
     InputHandler *inputHandler;
     std::vector<std::string> targetWords;
     int correctMatches;
+    std::vector<WordBlock> wordBlocks;
+    int wordAreaWidth;
 
 public:
     SentenceManager() : correctMatches(0)
     {
         inputHandler = new InputHandler();
         initializeTargetWords();
+        wordAreaWidth = 0;
     }
 
     ~SentenceManager()
@@ -58,6 +70,10 @@ public:
 
     void initializeTargetWords();
     void checkAnswers();
+    void createWordBlocks(int maxWidth);
+    void advanceWordBlocks(int maxHeight);
+    const std::vector<WordBlock> &getWordBlocks() const { return wordBlocks; }
+
     int getScore() const { return correctMatches * 100; }
 
     InputHandler *getInputHandler() const { return inputHandler; }
