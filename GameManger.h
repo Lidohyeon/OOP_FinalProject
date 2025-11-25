@@ -24,6 +24,10 @@ private:
     int currentLevel;
     bool gameRunning;
 
+    // 단어 이동 제어
+    time_t lastWordRenderTime;
+    int wordRenderInterval;
+
     // 점수 계산 상수
     static const int SNOWFLAKE_POINTS = 100;
     static const int TARGET_POINTS = 500;
@@ -34,7 +38,8 @@ public:
     // 생성자
     GameManager(int level) : currentLevel(level), totalScore(0), snowflakeScore(0),
                              targetScore(0), timeBonus(0), levelBonus(0),
-                             gameRunning(false), timeUp(false)
+                             gameRunning(false), timeUp(false),
+                             lastWordRenderTime(0), wordRenderInterval(1)
     {
         // 레벨에 따른 제한시간 설정
         switch (level)
@@ -65,6 +70,7 @@ public:
         targetScore = 0;
         timeBonus = 0;
         levelBonus = currentLevel * LEVEL_BONUS_BASE;
+        lastWordRenderTime = startTime;
     }
 
     // 시간 업데이트 및 카운트다운
@@ -162,6 +168,17 @@ public:
     {
         updateTime();
         return timeUp || !gameRunning;
+    }
+
+    bool shouldUpdateWordBlocks()
+    {
+        time_t now = time(nullptr);
+        if (difftime(now, lastWordRenderTime) >= wordRenderInterval)
+        {
+            lastWordRenderTime = now;
+            return true;
+        }
+        return false;
     }
 
     // 레벨 완료 시 호출

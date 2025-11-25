@@ -1,5 +1,6 @@
 #include "SentenceManager.h"
 #include <algorithm>
+#include <cstdlib>
 
 // ========== InputHandler 구현 ==========
 bool InputHandler::handleInput(int key)
@@ -84,26 +85,28 @@ int InputHandler::getCompletedInputsCount() const
 }
 
 // 추가: 개별 단어 정확도 체크
-bool InputHandler::isWordCorrect(int index, const std::string& target) const
+bool InputHandler::isWordCorrect(int index, const std::string &target) const
 {
-    if (index < 0 || index >= static_cast<int>(userInputs.size())) {
+    if (index < 0 || index >= static_cast<int>(userInputs.size()))
+    {
         return false;
     }
-    
+
     std::string userWord = userInputs[index];
     std::string targetWord = target;
-    
+
     // 대소문자 구분 없이 비교
     std::transform(userWord.begin(), userWord.end(), userWord.begin(), ::tolower);
     std::transform(targetWord.begin(), targetWord.end(), targetWord.begin(), ::tolower);
-    
+
     return userWord == targetWord;
 }
 
 // 추가: 특정 입력 필드 초기화
 void InputHandler::clearInput(int index)
 {
-    if (index >= 0 && index < static_cast<int>(userInputs.size())) {
+    if (index >= 0 && index < static_cast<int>(userInputs.size()))
+    {
         userInputs[index].clear();
     }
 }
@@ -111,7 +114,8 @@ void InputHandler::clearInput(int index)
 // 추가: 특정 입력 필드 값 반환
 std::string InputHandler::getInputAt(int index) const
 {
-    if (index >= 0 && index < static_cast<int>(userInputs.size())) {
+    if (index >= 0 && index < static_cast<int>(userInputs.size()))
+    {
         return userInputs[index];
     }
     return "";
@@ -120,12 +124,12 @@ std::string InputHandler::getInputAt(int index) const
 // ========== SentenceManager 구현 (수정됨) ==========
 
 // 수정: 생성자에서 Dictionary 생성 및 초기 문장 로드
-SentenceManager::SentenceManager(int level) 
+SentenceManager::SentenceManager(int level)
     : correctMatches(0), currentLevel(level), currentSentenceIndex(0)
 {
     inputHandler = new InputHandler();
-    dictionary = new Dictionary();  // Dictionary 객체 생성
-    
+    dictionary = new Dictionary(); // Dictionary 객체 생성
+
     // 레벨에 맞는 랜덤 문장 로드
     loadRandomSentence(level);
 }
@@ -137,23 +141,25 @@ SentenceManager::SentenceManager(int level)
 void SentenceManager::loadSentenceForLevel(int level, int sentenceIndex)
 {
     // 레벨 유효성 검사
-    if (level < 1 || level > 3) {
-        level = 1;  // 기본값
+    if (level < 1 || level > 3)
+    {
+        level = 1; // 기본값
     }
-    
+
     // 문장 인덱스 유효성 검사
     int sentenceCount = dictionary->getSentenceCount(level);
-    if (sentenceIndex < 0 || sentenceIndex >= sentenceCount) {
-        sentenceIndex = 0;  // 기본값
+    if (sentenceIndex < 0 || sentenceIndex >= sentenceCount)
+    {
+        sentenceIndex = 0; // 기본값
     }
-    
+
     // Dictionary에서 단어 가져오기
     targetWords = dictionary->getWordsForLevel(level, sentenceIndex);
-    
+
     // 현재 상태 업데이트
     currentLevel = level;
     currentSentenceIndex = sentenceIndex;
-    
+
     // 입력 초기화
     inputHandler->resetInputs();
     correctMatches = 0;
@@ -162,16 +168,17 @@ void SentenceManager::loadSentenceForLevel(int level, int sentenceIndex)
 // 새로 추가: 랜덤 문장 로드 (게임 시작 시 사용)
 void SentenceManager::loadRandomSentence(int level)
 {
-    if (level < 1 || level > 3) {
+    if (level < 1 || level > 3)
+    {
         level = 1;
     }
-    
+
     // Dictionary의 랜덤 문장 선택 기능 사용
     targetWords = dictionary->getRandomSentenceWords(level);
-    
+
     currentLevel = level;
     currentSentenceIndex = dictionary->getCurrentSentenceIndex();
-    
+
     inputHandler->resetInputs();
     correctMatches = 0;
 }
@@ -183,8 +190,9 @@ void SentenceManager::checkAnswers()
     const auto &userInputs = inputHandler->getUserInputs();
 
     // targetWords와 userInputs 개수가 다르면 경고
-    if (userInputs.size() != targetWords.size()) {
-        return;  // 안전 장치
+    if (userInputs.size() != targetWords.size())
+    {
+        return; // 안전 장치
     }
 
     for (size_t i = 0; i < userInputs.size() && i < targetWords.size(); i++)
@@ -203,8 +211,50 @@ void SentenceManager::checkAnswers()
     }
 }
 
-// 새로 추가: 전체 문장 반환 (화면 표시용)
-std::string SentenceManager::getFullSentence() const
+void SentenceManager::createWordBlocks(int maxWidth)
 {
-    return dictionary->getFullSentence(currentLevel, currentSentenceIndex);
+    wordBlocks.clear();
+    wordAreaWidth = maxWidth;
+    std::srand(static_cast<unsigned int>(std::time(nullptr)));
+
+    int minX = 2;
+    int maxX = wordAreaWidth - 10; // 단어 길이를 고려한 여유 공간
+
+    for (const auto &word : targetWords)
+    {
+        WordBlock block;
+        block.word = word;
+        block.y = 3; // 게임 영역 첫 줄
+        block.x = minX + (std::rand() % std::max(1, maxX - minX));
+        block.active = true;
+        wordBlocks.push_back(block);
+    }
+}
+
+void SentenceManager::advanceWordBlocks(int maxHeight)
+{
+    bool anyActive = false;
+
+    for (auto &block : wordBlocks)
+    {
+        if (!block.active)
+        {
+            continue;
+        }
+
+        anyActive = true;
+        if (block.y < maxHeight)
+        {
+            block.y += 1;
+        }
+        else
+        {
+            block.active = false;
+        }
+    }
+
+    if (!anyActive && wordAreaWidth > 0)
+    {
+        createWordBlocks(wordAreaWidth);
+    }
 }
