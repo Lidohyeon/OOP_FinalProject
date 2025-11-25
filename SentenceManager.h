@@ -1,9 +1,35 @@
 #ifndef SENTENCEMANAGER_H
 #define SENTENCEMANAGER_H
 
+#include <ctime>
 #include <string>
 #include <vector>
 #include <ncurses.h>
+
+struct WordBlock
+{
+    std::string word;
+    int x;
+    int y;
+    bool active;
+};
+
+enum class ItemEffect
+{
+    AddTime,
+    SubtractTime,
+    DoubleScore
+};
+
+struct ItemBox
+{
+    char token;
+    std::string label;
+    ItemEffect effect;
+    int x;
+    int y;
+    bool active;
+};
 
 class InputHandler
 {
@@ -14,6 +40,7 @@ private:
     static const int MAX_INPUTS = 8;
     static const int MAX_INPUT_LENGTH = 20;
     bool inputComplete;
+    std::string itemBuffer;
 
 public:
     InputHandler() : currentInputIndex(0), inputComplete(false)
@@ -22,6 +49,7 @@ public:
     }
 
     bool handleInput(int key);
+    bool handleItemInput(int key, std::string &submitted, bool &consumed);
     void resetInputs();
     void nextInput();
     void previousInput();
@@ -30,6 +58,7 @@ public:
     const std::vector<std::string> &getUserInputs() const { return userInputs; }
     int getCurrentInputIndex() const { return currentInputIndex; }
     const std::string &getCurrentInput() const { return currentInput; }
+    const std::string &getItemBuffer() const { return itemBuffer; }
     bool isInputComplete() const { return inputComplete; }
 
     // 입력 상태 확인
@@ -43,12 +72,17 @@ private:
     InputHandler *inputHandler;
     std::vector<std::string> targetWords;
     int correctMatches;
+    std::vector<WordBlock> wordBlocks;
+    int wordAreaWidth;
+    ItemBox itemBox;
+    bool hasItem;
 
 public:
-    SentenceManager() : correctMatches(0)
+    SentenceManager() : correctMatches(0), hasItem(false)
     {
         inputHandler = new InputHandler();
         initializeTargetWords();
+        wordAreaWidth = 0;
     }
 
     ~SentenceManager()
@@ -58,6 +92,15 @@ public:
 
     void initializeTargetWords();
     void checkAnswers();
+    void createWordBlocks(int maxWidth);
+    int advanceWordBlocks(int maxHeight);
+    void createItemBox(int maxWidth);
+    void advanceItemBox(int maxHeight);
+    const std::vector<WordBlock> &getWordBlocks() const { return wordBlocks; }
+    bool isItemActive() const { return hasItem && itemBox.active; }
+    const ItemBox &getItemBox() const { return itemBox; }
+    void consumeItemBox() { hasItem = false; }
+
     int getScore() const { return correctMatches * 100; }
 
     InputHandler *getInputHandler() const { return inputHandler; }

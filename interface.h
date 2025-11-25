@@ -4,6 +4,9 @@
 #include <unistd.h>
 #include <ncurses.h>
 #include <locale.h>
+#include <cctype>
+#include <ctime>
+#include <string>
 
 #include "GameManger.h"
 #include "SentenceManager.h"
@@ -28,6 +31,8 @@ private:
     int scoreAreaWidth;               // 점수판 영역 폭
     GameManager *gameManager;         // GameManager 추가
     SentenceManager *sentenceManager; // SentenceManager 추가
+    std::string noticeMessage;
+    time_t noticeTimestamp;
 
 public:
     PlayScreen(int level) : currentLevel(level), gameWidth(120), gameHeight(50), gameRunning(true),
@@ -52,6 +57,8 @@ public:
             init_pair(3, COLOR_WHITE, COLOR_BLACK);  // 눈송이
             init_pair(4, COLOR_RED, COLOR_BLACK);    // 목표물
             init_pair(5, COLOR_CYAN, COLOR_BLACK);   // 점수판
+            init_pair(6, COLOR_GREEN, COLOR_BLACK);  // 단어 블록
+            init_pair(7, COLOR_MAGENTA, COLOR_BLACK); // 아이템 박스
         }
 
         // 터미널 크기를 정확히 120x50으로 강제 설정
@@ -67,7 +74,10 @@ public:
         // GameManager 및 SentenceManager 생성
         gameManager = new GameManager(currentLevel);
         sentenceManager = new SentenceManager();
+        sentenceManager->createWordBlocks(gameAreaWidth - 2);
         gameManager->startGame();
+        noticeMessage = "";
+        noticeTimestamp = 0;
     }
 
     ~PlayScreen()
@@ -89,6 +99,26 @@ public:
 
         // 게임 시간 업데이트
         gameManager->updateTime();
+
+        // 단어 블록 이동 (1초 간격)
+        if (gameManager->shouldUpdateWordBlocks())
+        {
+            int landed = sentenceManager->advanceWordBlocks(gameHeight - 3);
+            if (landed > 0)
+            {
+                int penalty = landed * 10;
+                gameManager->adjustTime(-penalty);
+                noticeMessage = "Word missed! -" + std::to_string(penalty) + "s";
+                noticeTimestamp = time(nullptr);
+            }
+            sentenceManager->advanceItemBox(gameHeight - 3);
+        }
+
+        // 30초마다 아이템 박스 생성
+        if (!sentenceManager->isItemActive() && gameManager->shouldSpawnItemBox())
+        {
+            sentenceManager->createItemBox(gameAreaWidth - 2);
+        }
 
         // 게임 종료 조건 확인
         if (gameManager->checkGameEnd())
@@ -209,9 +239,23 @@ public:
                 mvprintw(row, gameAreaWidth + 2, "-------------------");
                 break;
             case 19:
-                mvprintw(row, gameAreaWidth + 2, "ESC - Back to Menu");
+                if (!noticeMessage.empty() && difftime(time(nullptr), noticeTimestamp) < 5)
+                {
+                    mvprintw(row, gameAreaWidth + 2, "%s", noticeMessage.c_str());
+                }
+                else
+                {
+                    for (int i = gameAreaWidth + 1; i < gameAreaWidth + 30; i++)
+                        mvprintw(row, i, " ");
+                }
                 break;
             case 21:
+                mvprintw(row, gameAreaWidth + 2, "Multiplier: x%d", gameManager->getScoreMultiplier());
+                break;
+            case 23:
+                mvprintw(row, gameAreaWidth + 2, "ESC - Back to Menu");
+                break;
+            case 25:
                 mvprintw(row, gameAreaWidth + 2, "TAB - Next Input");
                 break;
             default:
@@ -275,6 +319,22 @@ public:
             {
                 mvprintw(row, gameAreaWidth + 32, "to next input");
             }
+            else if (input_row == 18)
+            {
+                mvprintw(row, gameAreaWidth + 32, "Item Key: %s", sentenceManager->getInputHandler()->getItemBuffer().c_str());
+            }
+            else if (input_row == 19)
+            {
+                if (sentenceManager->isItemActive())
+                {
+                    const auto &item = sentenceManager->getItemBox();
+                    mvprintw(row, gameAreaWidth + 32, "Type '%c' + ENTER", item.token);
+                }
+                else
+                {
+                    mvprintw(row, gameAreaWidth + 32, "No active item box");
+                }
+            }
             else
             {
                 for (int i = gameAreaWidth + 31; i < gameWidth - 1; i++)
@@ -283,6 +343,26 @@ public:
             attroff(COLOR_PAIR(3));
 
             mvprintw(row, gameWidth - 1, "|");
+        }
+
+        // 단어 블록 렌더링
+        attron(COLOR_PAIR(6) | A_BOLD);
+        for (const auto &block : sentenceManager->getWordBlocks())
+        {
+            if (block.active && block.y >= 3 && block.y < gameHeight - 2)
+            {
+                mvprintw(block.y, block.x, "%s", block.word.c_str());
+            }
+        }
+        attroff(COLOR_PAIR(6) | A_BOLD);
+
+        // 아이템 박스 렌더링
+        if (sentenceManager->isItemActive())
+        {
+            const auto &item = sentenceManager->getItemBox();
+            attron(COLOR_PAIR(7) | A_BOLD);
+            mvprintw(item.y, item.x, "[%c]%s", item.token, item.label.c_str());
+            attroff(COLOR_PAIR(7) | A_BOLD);
         }
 
         // 하단 (ASCII 문자 사용)
@@ -357,6 +437,47 @@ public:
                     sentenceManager->getInputHandler()->previousInput();
                     break;
                 default:
+                    // 아이템 입력 우선 처리
+                    if (sentenceManager->isItemActive())
+                    {
+                        std::string submitted;
+                        bool consumed = false;
+                        bool submittedItem = sentenceManager->getInputHandler()->handleItemInput(key, submitted, consumed);
+                        if (submittedItem)
+                        {
+                            const auto &item = sentenceManager->getItemBox();
+                            if (!submitted.empty() && tolower(submitted[0]) == tolower(item.token))
+                            {
+                                switch (item.effect)
+                                {
+                                case ItemEffect::AddTime:
+                                    gameManager->adjustTime(10);
+                                    noticeMessage = "Item: +10s";
+                                    break;
+                                case ItemEffect::SubtractTime:
+                                    gameManager->adjustTime(-10);
+                                    noticeMessage = "Item: -10s";
+                                    break;
+                                case ItemEffect::DoubleScore:
+                                    gameManager->setScoreMultiplier(2);
+                                    noticeMessage = "Item: Score x2";
+                                    break;
+                                }
+                            }
+                            else
+                            {
+                                noticeMessage = "Item failed";
+                            }
+                            noticeTimestamp = time(nullptr);
+                            sentenceManager->consumeItemBox();
+                        }
+
+                        if (consumed)
+                        {
+                            break;
+                        }
+                    }
+
                     // 다른 키들은 InputHandler로 전달
                     if (sentenceManager->getInputHandler()->handleInput(key))
                     {

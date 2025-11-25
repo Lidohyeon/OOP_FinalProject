@@ -19,10 +19,22 @@ private:
     int timeLimit;     // 제한시간 (초)
     int remainingTime; // 남은 시간
     bool timeUp;       // 시간 초과 여부
+    int timeAdjustment; // 아이템/패널티로 변경된 시간
 
     // 게임 상태
     int currentLevel;
     bool gameRunning;
+
+    // 단어 이동 제어
+    time_t lastWordRenderTime;
+    int wordRenderInterval;
+
+    // 아이템 박스 제어
+    time_t lastItemSpawnTime;
+    int itemSpawnInterval;
+
+    // 점수 배수
+    int scoreMultiplier;
 
     // 점수 계산 상수
     static const int SNOWFLAKE_POINTS = 100;
@@ -34,7 +46,10 @@ public:
     // 생성자
     GameManager(int level) : currentLevel(level), totalScore(0), snowflakeScore(0),
                              targetScore(0), timeBonus(0), levelBonus(0),
-                             gameRunning(false), timeUp(false)
+                             gameRunning(false), timeUp(false), timeAdjustment(0),
+                             lastWordRenderTime(0), wordRenderInterval(1),
+                             lastItemSpawnTime(0), itemSpawnInterval(30),
+                             scoreMultiplier(1)
     {
         // 레벨에 따른 제한시간 설정
         switch (level)
@@ -60,11 +75,15 @@ public:
         startTime = time(nullptr);
         gameRunning = true;
         timeUp = false;
+        timeAdjustment = 0;
         totalScore = 0;
         snowflakeScore = 0;
         targetScore = 0;
         timeBonus = 0;
         levelBonus = currentLevel * LEVEL_BONUS_BASE;
+        lastWordRenderTime = startTime;
+        lastItemSpawnTime = startTime;
+        scoreMultiplier = 1;
     }
 
     // 시간 업데이트 및 카운트다운
@@ -75,7 +94,7 @@ public:
 
         time_t currentTime = time(nullptr);
         int elapsedTime = (int)(currentTime - startTime);
-        remainingTime = timeLimit - elapsedTime;
+        remainingTime = timeLimit + timeAdjustment - elapsedTime;
 
         if (remainingTime <= 0)
         {
@@ -109,7 +128,7 @@ public:
 
     void updateTotalScore()
     {
-        totalScore = snowflakeScore + targetScore + timeBonus + levelBonus;
+        totalScore = (snowflakeScore + targetScore + timeBonus + levelBonus) * scoreMultiplier;
     }
 
     // Getter 메서드들
@@ -123,6 +142,7 @@ public:
     int getTimeLimit() const { return timeLimit; }
     bool isTimeUp() const { return timeUp; }
     bool isGameRunning() const { return gameRunning; }
+    int getScoreMultiplier() const { return scoreMultiplier; }
 
     // 시간 포맷팅 (MM:SS 형식)
     std::string getFormattedTime() const
@@ -146,6 +166,44 @@ public:
     {
         updateTime();
         return timeUp || !gameRunning;
+    }
+
+    bool shouldUpdateWordBlocks()
+    {
+        time_t now = time(nullptr);
+        if (difftime(now, lastWordRenderTime) >= wordRenderInterval)
+        {
+            lastWordRenderTime = now;
+            return true;
+        }
+        return false;
+    }
+
+    bool shouldSpawnItemBox()
+    {
+        time_t now = time(nullptr);
+        if (difftime(now, lastItemSpawnTime) >= itemSpawnInterval)
+        {
+            lastItemSpawnTime = now;
+            return true;
+        }
+        return false;
+    }
+
+    void adjustTime(int delta)
+    {
+        timeAdjustment += delta;
+        updateTime();
+    }
+
+    void setScoreMultiplier(int multiplier)
+    {
+        if (multiplier < 1)
+        {
+            multiplier = 1;
+        }
+        scoreMultiplier = multiplier;
+        updateTotalScore();
     }
 
     // 레벨 완료 시 호출
