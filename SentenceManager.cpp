@@ -1,6 +1,7 @@
 #include "SentenceManager.h"
 #include <algorithm>
 #include <cstdlib>
+#include "WordBlock.h"
 
 // ========== InputHandler 구현 ==========
 bool InputHandler::handleInput(int key)
@@ -202,30 +203,11 @@ void SentenceManager::checkAnswers()
     }
 }
 
-void SentenceManager::createWordBlocks(int maxWidth)
-{
-    wordBlocks.clear();
-    wordAreaWidth = maxWidth;
-    std::srand(static_cast<unsigned int>(std::time(nullptr)));
-
-    int minX = 2;
-    int maxX = wordAreaWidth - 10; // 단어 길이를 고려한 여유 공간
-
-    for (const auto &word : targetWords)
-    {
-        WordBlock block;
-        block.word = word;
-        block.y = 3; // 게임 영역 첫 줄
-        block.x = minX + (std::rand() % std::max(1, maxX - minX));
-        block.active = true;
-        wordBlocks.push_back(block);
-    }
-}
-
 void SentenceManager::advanceWordBlocks(int maxHeight)
 {
-    bool anyActive = false;
+    bool hasReachedBottom = false;
 
+    // 기존 블록들 이동 처리
     for (auto &block : wordBlocks)
     {
         if (!block.active)
@@ -233,19 +215,58 @@ void SentenceManager::advanceWordBlocks(int maxHeight)
             continue;
         }
 
-        anyActive = true;
-        if (block.y < maxHeight)
-        {
-            block.y += 1;
-        }
-        else
+        // FallingObject의 fall() 함수 호출 - 매 프레임마다 한 칸씩 내려감
+        block.fall();
+
+        // active 속성 동기화
+        block.active = block.getIsActive();
+
+        // 바닥 도달 체크
+        if (block.getY() >= maxHeight - 3)
         {
             block.active = false;
+            hasReachedBottom = true;
         }
     }
 
-    if (!anyActive && wordAreaWidth > 0)
+    // 바닥에 도달한 블록이 있으면 페널티 설정
+    if (hasReachedBottom)
     {
-        createWordBlocks(wordAreaWidth);
+        timePanalty = true;
     }
+
+    // 비활성화된 블록들 제거 (메모리 효율성)
+    wordBlocks.erase(
+        std::remove_if(wordBlocks.begin(), wordBlocks.end(),
+                       [](const WordBlock &block)
+                       { return !block.active; }),
+        wordBlocks.end());
+}
+
+void SentenceManager::createWordBlock(int maxWidth, int wordIndex)
+{
+    wordAreaWidth = maxWidth;
+
+    // wordIndex가 유효한 범위인지 확인
+    if (wordIndex < 0 || wordIndex >= static_cast<int>(targetWords.size()))
+    {
+        return;
+    }
+
+    int minX = 2;
+    int maxX = wordAreaWidth - 15; // 단어 길이를 더 여유롭게 고려
+
+    const std::string &word = targetWords[wordIndex];
+
+    // FallingObject를 상속받은 WordBlock 생성
+    WordBlock block(word, wordIndex, wordAreaWidth, 45, 1.0);
+
+    // 랜덤 x 위치 설정
+    int randomX = minX + (std::rand() % std::max(1, maxX - minX));
+    block.setPosition(randomX, 3); // 게임 영역 상단에서 시작
+    block.active = true;
+
+    block.syncProperties();
+
+    wordBlocks.push_back(block);
 }

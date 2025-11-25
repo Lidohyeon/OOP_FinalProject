@@ -3,6 +3,9 @@
 
 #include <ctime>
 #include <string>
+#include <vector>
+#include "SentenceManager.h"
+#include "WordBlock.h"
 
 class GameManager
 {
@@ -26,7 +29,15 @@ private:
 
     // 단어 이동 제어
     time_t lastWordRenderTime;
+    time_t lastWordCreateTime; // 추가: 단어 생성 시간 추적
     int wordRenderInterval;
+    double wordCreateInterval; // 추가: 단어 생성 간격 (0.5초)
+
+    // 단어 생성 제어 추가
+    int currentWordIndex;       // 현재 생성 중인 단어 인덱스 (0-7)
+    bool allWordsGenerated;     // 8개 단어 모두 생성 완료 여부
+    bool waitingForCompletion;  // 완성 대기 중인지
+    std::vector<int> wordOrder; // 랜덤 순서로 생성할 단어 인덱스 배열
 
     // 점수 계산 상수
     static const int SNOWFLAKE_POINTS = 100;
@@ -39,7 +50,10 @@ public:
     GameManager(int level) : currentLevel(level), totalScore(0), snowflakeScore(0),
                              targetScore(0), timeBonus(0), levelBonus(0),
                              gameRunning(false), timeUp(false),
-                             lastWordRenderTime(0), wordRenderInterval(1)
+                             lastWordRenderTime(0), lastWordCreateTime(0),
+                             wordRenderInterval(1), wordCreateInterval(3.0), // 0.5초에서 3초로 변경
+                             currentWordIndex(0), allWordsGenerated(false),
+                             waitingForCompletion(false)
     {
         // 레벨에 따른 제한시간 설정
         switch (level)
@@ -57,11 +71,36 @@ public:
             timeLimit = 180;
             break;
         }
+
+        // 랜덤 시드 초기화
+        srand(static_cast<unsigned>(time(nullptr)));
+
+        // 단어 순서 초기화 (0-7)
+        initializeWordOrder();
+    }
+
+    // 랜덤 단어 순서 생성
+    void initializeWordOrder()
+    {
+        wordOrder.clear();
+        // 0-7 인덱스를 순서대로 추가
+        for (int i = 0; i < 8; i++)
+        {
+            wordOrder.push_back(i);
+        }
+
+        // Fisher-Yates 셔플 알고리즘으로 랜덤하게 섞기
+        for (int i = 7; i > 0; i--)
+        {
+            int j = rand() % (i + 1);
+            std::swap(wordOrder[i], wordOrder[j]);
+        }
     }
 
     // 게임 시작
-    void startGame()
+    void startGame(SentenceManager *sentencemanager)
     {
+
         startTime = time(nullptr);
         gameRunning = true;
         timeUp = false;
@@ -71,6 +110,19 @@ public:
         timeBonus = 0;
         levelBonus = currentLevel * LEVEL_BONUS_BASE;
         lastWordRenderTime = startTime;
+        lastWordCreateTime = startTime;
+
+        // 초기화
+        currentWordIndex = 0;
+        allWordsGenerated = false;
+        waitingForCompletion = false;
+
+        // 새로운 랜덤 순서 생성
+        initializeWordOrder();
+
+        // 첫 번째 단어 블록 즉시 생성 (랜덤 순서의 첫 번째)
+        sentencemanager->createWordBlock(60, wordOrder[currentWordIndex]);
+        currentWordIndex++;
     }
 
     // 시간 업데이트 및 카운트다운
@@ -107,10 +159,11 @@ public:
     // 시간 감소 (객체가 바닥에 떨어졌을 때 페널티)
     void applyTimePenalty(int seconds = 10)
     {
-        if (!gameRunning) return;
-        
+        if (!gameRunning)
+            return;
+
         remainingTime -= seconds;
-        
+
         // 시간이 0 이하가 되면 게임 종료
         if (remainingTime <= 0)
         {
@@ -181,12 +234,81 @@ public:
         return false;
     }
 
-    // 레벨 완료 시 호출
-    void completeLevel()
+    bool shouldCreateWordBlock()
     {
-        endGame();
-        calculateTimeBonus();
+        // 이미 8개 모두 생성했거나 완성 대기 중이면 생성하지 않음
+        if (allWordsGenerated || waitingForCompletion)
+        {
+            return false;
+        }
+
+        time_t now = time(nullptr);
+        if (difftime(now, lastWordCreateTime) >= wordCreateInterval)
+        {
+            lastWordCreateTime = now;
+            return true;
+        }
+        return false;
     }
+
+    // 단어 생성 처리 (interface.h에서 호출)
+    bool handleWordGeneration(SentenceManager *sentenceManager)
+    {
+        // 바닥에 닿은 단어 블록 체크 및 시간 페널티 적용
+        auto &wordBlocks = sentenceManager->getWordBlocks(); // const 제거
+        for (auto &block : wordBlocks)                       // const 제거
+        {
+            // FallingObject의 checkAndResetBottomReached() 사용
+            if (block.checkAndResetBottomReached())
+            {
+                applyTimePenalty(10); // 10초 감소
+                break;                // 한 번에 하나씩만 처리
+            }
+        }
+
+        if (shouldCreateWordBlock() && currentWordIndex < 8)
+        {
+            // 미리 섞어둔 순서대로 단어 생성
+            int wordIndexToCreate = wordOrder[currentWordIndex];
+            sentenceManager->createWordBlock(58, wordIndexToCreate);
+            currentWordIndex++;
+
+            // 8개 모두 생성 완료
+            if (currentWordIndex >= 8)
+            {
+                allWordsGenerated = true;
+                waitingForCompletion = true;
+            }
+            return true;
+        }
+
+        // correctMatches가 8이 되면 새로운 문장으로 넘어가기
+        if (waitingForCompletion && sentenceManager->getCorrectMatches() == 8)
+        {
+            // 새로운 랜덤 문장 로드
+            sentenceManager->loadRandomSentence(currentLevel);
+
+            // 상태 초기화
+            currentWordIndex = 0;
+            allWordsGenerated = false;
+            waitingForCompletion = false;
+
+            // 새로운 랜덤 순서 생성
+            initializeWordOrder();
+
+            // 점수 추가 (문장 완성 보너스)
+            addTargetScore();
+
+            return true;
+        }
+
+        return false;
+    }
+
+    // Getter 추가
+    int getCurrentWordIndex() const { return currentWordIndex; }
+    bool areAllWordsGenerated() const { return allWordsGenerated; }
+    bool isWaitingForCompletion() const { return waitingForCompletion; }
 };
 
 #endif // GAMEMANAGER_H

@@ -1,19 +1,13 @@
 #ifndef SENTENCEMANAGER_H
 #define SENTENCEMANAGER_H
 
-#include <ctime>
 #include <string>
 #include <vector>
 #include <ncurses.h>
 #include "Dictionary.h"
+#include "WordBlock.h"
 
-struct WordBlock
-{
-    std::string word;
-    int x;
-    int y;
-    bool active;
-};
+// WordBlock 구조체/클래스 정의 제거 (WordBlock.h에서 정의되므로)
 
 class InputHandler
 {
@@ -56,7 +50,7 @@ class SentenceManager
 {
 private:
     InputHandler *inputHandler;
-    Dictionary *dictionary; // 추가: Dictionary 객체 포인터
+    Dictionary *dictionary;
     std::vector<std::string> targetWords;
     int correctMatches;
     std::vector<WordBlock> wordBlocks;
@@ -64,13 +58,14 @@ private:
     int currentLevel;
     int currentSentenceIndex;
 
+    bool timePanalty;
+
 public:
-    SentenceManager(int level) : correctMatches(0), currentLevel(level), currentSentenceIndex(0)
+    SentenceManager(int level) : correctMatches(0), currentLevel(level),
+                                 currentSentenceIndex(0), wordAreaWidth(0)
     {
         inputHandler = new InputHandler();
-        dictionary = new Dictionary(); // Dictionary 객체 생성
-
-        // 레벨에 맞는 랜덤 문장 로드
+        dictionary = new Dictionary();
         loadRandomSentence(level);
     }
     ~SentenceManager()
@@ -86,9 +81,11 @@ public:
     void loadRandomSentence(int level);
 
     void checkAnswers();
-    void createWordBlocks(int maxWidth);
+    void createWordBlock(int maxWidth, int wordIndex);
     void advanceWordBlocks(int maxHeight);
+    // WordBlocks getter (const와 non-const 버전 모두 제공)
     const std::vector<WordBlock> &getWordBlocks() const { return wordBlocks; }
+    std::vector<WordBlock> &getWordBlocks() { return wordBlocks; }
 
     int getScore() const { return correctMatches * 100; }
 
@@ -105,6 +102,9 @@ public:
 
     // 추가: Dictionary 접근 (필요 시)
     Dictionary *getDictionary() const { return dictionary; }
+
+    bool getTimePanalty() const { return timePanalty; };
+    void setTimePanalty(bool result) { timePanalty = result; };
 };
 
 #endif // SENTENCEMANAGER_H
