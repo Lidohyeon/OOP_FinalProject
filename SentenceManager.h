@@ -5,6 +5,10 @@
 #include <string>
 #include <vector>
 #include <ncurses.h>
+#include "Dictionary.h"
+#include "WordBlock.h"
+
+// WordBlock 구조체/클래스 정의 제거 (WordBlock.h에서 정의되므로)
 
 struct WordBlock
 {
@@ -64,12 +68,18 @@ public:
     // 입력 상태 확인
     bool allInputsComplete() const;
     int getCompletedInputsCount() const;
+
+    // 추가: 개별 입력 필드 조작 메서드
+    bool isWordCorrect(int index, const std::string &target) const;
+    void clearInput(int index);
+    std::string getInputAt(int index) const;
 };
 
 class SentenceManager
 {
 private:
     InputHandler *inputHandler;
+    Dictionary *dictionary;
     std::vector<std::string> targetWords;
     int correctMatches;
     std::vector<WordBlock> wordBlocks;
@@ -84,13 +94,18 @@ public:
         initializeTargetWords();
         wordAreaWidth = 0;
     }
-
     ~SentenceManager()
     {
         delete inputHandler;
+        delete dictionary; // 추가: Dictionary 메모리 해제
     }
 
-    void initializeTargetWords();
+    // 수정: initializeTargetWords() 삭제, 대신 loadSentenceForLevel() 사용
+    void loadSentenceForLevel(int level, int sentenceIndex);
+
+    // 추가: 랜덤 문장 로드
+    void loadRandomSentence(int level);
+
     void checkAnswers();
     void createWordBlocks(int maxWidth);
     int advanceWordBlocks(int maxHeight);
@@ -106,48 +121,19 @@ public:
     InputHandler *getInputHandler() const { return inputHandler; }
     const std::vector<std::string> &getTargetWords() const { return targetWords; }
     int getCorrectMatches() const { return correctMatches; }
+
+    // 추가: 레벨 및 문장 정보 접근
+    int getCurrentLevel() const { return dictionary->getCurrentLevel(); }
+    int getCurrentSentenceIndex() const { return dictionary->getCurrentSentenceIndex(); }
+
+    // 추가: 전체 문장 반환 (화면에 표시용)
+    std::string getFullSentence() const;
+
+    // 추가: Dictionary 접근 (필요 시)
+    Dictionary *getDictionary() const { return dictionary; }
+
+    bool getTimePanalty() const { return timePanalty; };
+    void setTimePanalty(bool result) { timePanalty = result; };
 };
 
 #endif // SENTENCEMANAGER_H
-
-/* // 예시 문장들 8개의 단어들로만 구성된.
-The bright morning sun warmed the quiet village.
-
-She finally found courage to follow her dreams.
-
-They walked together along the peaceful riverside path.
-
-His sudden smile completely changed her gloomy mood.
-
-The old library smelled like memories and stories.
-
-We shared warm coffee during the rainy afternoon.
-
-The kitten slept safely beside its loving mother.
-
-He learned patience through countless failures and challenges.
-
-Our journey began under a sky full of stars.
-
-The gentle wind carried whispers across the valley.
-
-She protected everything she loved with quiet strength.
-
-A single message unexpectedly changed his entire life.
-
-They celebrated success under lights glowing like fireflies.
-
-Her soft laughter echoed through the empty hallway.
-
-We found hope again after surviving the storm.
-
-The warm candlelight flickered softly in the darkness.
-
-He trusted her completely despite their difficult past.
-
-Nature healed their hearts with calm gentle beauty.
-
-She discovered truth hidden beneath the forgotten letters.
-
-The small miracle happened when they least expected.
-*/
