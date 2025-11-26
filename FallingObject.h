@@ -8,21 +8,22 @@
 class FallingObject
 {
 protected:
-    int x;                      // x 좌표 (가로)
-    int y;                      // y 좌표 (세로)
-    int initialX;               // 초기 x 좌표 (삭제 시 복원용)
-    int initialY;               // 초기 y 좌표 (삭제 시 복원용)
-    bool isActive;              // 활성 상태 (화면에 보이는지)
-    double fallSpeed;           // 낙하 속도
-    int gameAreaWidth;          // 게임 영역 폭 (경계 체크용)
-    int gameAreaHeight;         // 게임 영역 높이 (경계 체크용)
-    bool hasReachedBottom;      // 바닥에 도달했는지
+    int x;                 // x 좌표 (가로)
+    int y;                 // y 좌표 (세로)
+    int initialX;          // 초기 x 좌표 (삭제 시 복원용)
+    int initialY;          // 초기 y 좌표 (삭제 시 복원용)
+    bool isActive;         // 활성 상태 (화면에 보이는지)
+    double fallSpeed;      // 낙하 속도
+    int gameAreaWidth;     // 게임 영역 폭 (경계 체크용)
+    int gameAreaHeight;    // 게임 영역 높이 (경계 체크용)
+    bool hasReachedBottom; // 바닥에 도달했는지
 
     // 랜덤 시드 초기화 헬퍼
     static void initRandomSeed()
     {
         static bool seeded = false;
-        if (!seeded) {
+        if (!seeded)
+        {
             srand(static_cast<unsigned int>(time(nullptr)));
             seeded = true;
         }
@@ -31,7 +32,7 @@ protected:
 public:
     // 생성자
     FallingObject(int areaWidth, int areaHeight, double speed = 1.0)
-        : gameAreaWidth(areaWidth), gameAreaHeight(areaHeight), 
+        : gameAreaWidth(areaWidth), gameAreaHeight(areaHeight),
           fallSpeed(speed), isActive(true), hasReachedBottom(false)
     {
         initRandomSeed();
@@ -44,16 +45,22 @@ public:
     // 생성되면 물체를 내려오게끔 하는 함수 (가상 함수 - 오버라이드 가능)
     virtual void fall()
     {
-        if (!isActive) return;
+        if (!isActive)
+            return;
 
+        // 매 호출마다 fallSpeed만큼 아래로 이동
         y += static_cast<int>(fallSpeed);
 
         // 바닥에 도달했는지 체크
-        if (y >= gameAreaHeight - 3) {
-            if (!hasReachedBottom) {
-                hasReachedBottom = true;  // WordBlock의 경우 페널티 대상
+        if (y >= gameAreaHeight - 3)
+        {
+            if (!hasReachedBottom)
+            {
+                hasReachedBottom = true; // 페널티 플래그 설정
             }
             y = gameAreaHeight - 3; // 바닥 위치 고정
+            // 바닥 도달 시 비활성화 (선택사항)
+            // isActive = false;
         }
     }
 
@@ -63,7 +70,8 @@ public:
     // 바닥 도달 여부 체크
     bool checkAndResetBottomReached()
     {
-        if (hasReachedBottom && isActive) {
+        if (hasReachedBottom && isActive)
+        {
             return true;
         }
         return false;
@@ -76,10 +84,10 @@ public:
     bool getHasReachedBottom() const { return hasReachedBottom; }
 
     // Setter 메서드들
-    void setPosition(int newX, int newY) 
-    { 
-        x = newX; 
-        y = newY; 
+    void setPosition(int newX, int newY)
+    {
+        x = newX;
+        y = newY;
     }
 
     void setActive(bool active) { isActive = active; }
