@@ -10,7 +10,7 @@ class ItemBox : public FallingObject
 public:
     enum class ItemType
     {
-        EXTRA_LIFE, // 목숨 +1
+
         TIME_BONUS, // 시간 +10초
         TIME_MINUS, // 시간 -10초
         SCORE_BOOST // 점수 2배
@@ -66,19 +66,17 @@ public:
 
     // Getter
     ItemType getItemType() const { return itemType; }
-    char getDisplayChar() const { return displayChar; }
 
     // 아이템 효과 설명 문자열
     std::string getEffectDescription() const
     {
         switch (itemType)
         {
-        case ItemType::EXTRA_LIFE:
-            return "Extra Life +1";
+
         case ItemType::TIME_BONUS:
             return "Time +10 sec";
-        case ItemType::SLOW_MOTION:
-            return "Slow Motion";
+        case ItemType::TIME_MINUS:
+            return "Time -10 sec";
         case ItemType::SCORE_BOOST:
             return "Score x2";
         default:
