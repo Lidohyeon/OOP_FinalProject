@@ -3,9 +3,11 @@
 
 #include <string>
 #include <vector>
+#include <ctime>
 #include <ncurses.h>
 #include "Dictionary.h"
 #include "WordBlock.h"
+#include "ItemBox.h"
 
 // WordBlock 구조체/클래스 정의 제거 (WordBlock.h에서 정의되므로)
 
@@ -60,6 +62,10 @@ private:
 
     bool timePanalty;
 
+    std::vector<ItemBox> itemBoxes;
+    time_t lastItemBoxSpawnTime;
+    static constexpr double ITEMBOX_INTERVAL = 30.0;
+
 public:
     SentenceManager(int level) : correctMatches(0), currentLevel(level),
                                  currentSentenceIndex(0), wordAreaWidth(0)
@@ -67,6 +73,7 @@ public:
         inputHandler = new InputHandler();
         dictionary = new Dictionary();
         loadRandomSentence(level);
+        lastItemBoxSpawnTime = time(nullptr);
     }
     ~SentenceManager()
     {
@@ -82,10 +89,16 @@ public:
 
     void checkAnswers();
     void createWordBlock(int maxWidth, int wordIndex);
+    void createItemBox(int maxWidth, int maxHeight);
+    void advanceItemBoxes(int maxHeight);
+    void spawnItemBoxIfNeeded(int maxWidth, int maxHeight);
+    bool tryUseActiveItemBox(ItemBox::ItemType &typeOut);
     void advanceWordBlocks(int maxHeight);
     // WordBlocks getter (const와 non-const 버전 모두 제공)
     const std::vector<WordBlock> &getWordBlocks() const { return wordBlocks; }
     std::vector<WordBlock> &getWordBlocks() { return wordBlocks; }
+    const std::vector<ItemBox> &getItemBoxes() const { return itemBoxes; }
+    std::vector<ItemBox> &getItemBoxes() { return itemBoxes; }
 
     int getScore() const { return correctMatches * 100; }
 

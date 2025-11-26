@@ -2,6 +2,7 @@
 #define ITEMBOX_H
 
 #include "FallingObject.h"
+#include <cmath>
 #include <string>
 
 // ItemBox: 아이템 박스
@@ -18,13 +19,14 @@ public:
 
 private:
     ItemType itemType;
+    double fallAccumulator;
 
 public:
     ItemBox(int areaWidth, int areaHeight, double speed = 0.8)
-        : FallingObject(areaWidth, areaHeight, speed)
+        : FallingObject(areaWidth, areaHeight, speed), fallAccumulator(0.0)
     {
         // 랜덤 아이템 타입 결정
-        itemType = static_cast<ItemType>(rand() % 4);
+        itemType = static_cast<ItemType>(rand() % 3);
 
         // 랜덤 x 위치 (아이템 박스는 3칸 폭: [?])
         x = rand() % (gameAreaWidth - 4) + 1;
@@ -37,7 +39,16 @@ public:
         if (!isActive)
             return;
 
-        y += static_cast<int>(fallSpeed);
+        // 낙하 속도가 1보다 작을 때도 움직이도록 누적 이동량을 반영
+        fallAccumulator += fallSpeed;
+        int step = static_cast<int>(std::floor(fallAccumulator));
+        if (step <= 0)
+        {
+            return;
+        }
+
+        y += step;
+        fallAccumulator -= step;
 
         // 바닥에 도달하면 그냥 사라짐 (페널티 없음)
         if (y >= gameAreaHeight - 3)
