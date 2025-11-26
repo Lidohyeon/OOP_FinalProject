@@ -21,6 +21,8 @@ private:
     int timepanaltyCount;
     int timeAdjustment; // 아이템 효과로 조정된 시간 (초)
     int scoreMultiplier;
+    std::string lastItemEffectMessage;
+    time_t lastItemEffectTime;
 
     // 시간 관련
     time_t startTime;  // 게임 시작 시간
@@ -62,6 +64,7 @@ public:
                              timepanaltyCount(0),
                              timeAdjustment(0),
                              scoreMultiplier(1),
+                             lastItemEffectTime(0),
                              waitingForCompletion(false)
     {
         // 레벨에 따른 제한시간 설정
@@ -333,16 +336,21 @@ public:
         {
         case ItemBox::ItemType::TIME_BONUS:
             timeAdjustment += 10;
+            lastItemEffectMessage = "TIME +10 SECONDS!";
             break;
         case ItemBox::ItemType::TIME_MINUS:
             timeAdjustment -= 10;
+            lastItemEffectMessage = "TIME -10 SECONDS!";
             break;
         case ItemBox::ItemType::SCORE_BOOST:
             scoreMultiplier = 2;
+            lastItemEffectMessage = "SCORE MULTIPLIED!";
             break;
         default:
             break;
         }
+
+        lastItemEffectTime = time(nullptr);
 
         updateTime();
         updateTotalScore();
@@ -357,6 +365,17 @@ public:
 
     // Getter 추가
     int getCurrentWordIndex() const { return currentWordIndex; }
+
+    bool shouldDisplayItemEffect(double durationSeconds = 3.0) const
+    {
+        if (lastItemEffectTime == 0)
+        {
+            return false;
+        }
+        return difftime(time(nullptr), lastItemEffectTime) < durationSeconds;
+    }
+
+    const std::string &getLastItemEffectMessage() const { return lastItemEffectMessage; }
 
     bool isWaitingForCompletion() const { return waitingForCompletion; }
 };

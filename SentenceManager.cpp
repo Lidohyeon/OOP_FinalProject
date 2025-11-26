@@ -314,6 +314,9 @@ bool SentenceManager::tryUseActiveItemBox(ItemBox::ItemType &typeOut)
         if (box.getIsActive())
         {
             typeOut = box.applyRandomEffect();
+            itemBoxes.erase(std::remove_if(itemBoxes.begin(), itemBoxes.end(), [](const ItemBox &b)
+                                           { return !b.getIsActive(); }),
+                            itemBoxes.end());
             return true;
         }
     }
