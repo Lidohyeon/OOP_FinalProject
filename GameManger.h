@@ -6,6 +6,7 @@
 #include <vector>
 #include "SentenceManager.h"
 #include "WordBlock.h"
+#include "ItemBox.h"
 
 class GameManager
 {
@@ -17,7 +18,11 @@ private:
     int timeBonus;      // 시간 보너스
     int levelBonus;     // 레벨 보너스
 
-    int timepanaltyCount;
+    int timePenaltySeconds;
+    int timeAdjustment; // 아이템 효과로 조정된 시간 (초)
+    int scoreMultiplier;
+    std::string lastItemEffectMessage;
+    time_t lastItemEffectTime;
 
     // 시간 관련
     time_t startTime;  // 게임 시작 시간
@@ -56,7 +61,10 @@ public:
                              lastWordCreateTime(0),
                              wordCreateInterval(3.0), // 0.5초에서 3초로 변경
                              currentWordIndex(0),
-                             timepanaltyCount(0),
+                             timePenaltySeconds(0),
+                             timeAdjustment(0),
+                             scoreMultiplier(1),
+                             lastItemEffectTime(0),
                              waitingForCompletion(false)
     {
         // 레벨에 따른 제한시간 설정
@@ -118,7 +126,9 @@ public:
         levelBonus = currentLevel * LEVEL_BONUS_BASE;
         lastWordRenderTime = startTime;
         lastWordCreateTime = startTime;
-        timepanaltyCount = 0;
+        timePenaltySeconds = 0;
+        timeAdjustment = 0;
+        scoreMultiplier = 1;
 
         // 초기화
         currentWordIndex = 0;
@@ -142,7 +152,7 @@ public:
 
         time_t currentTime = time(nullptr);
         int elapsedTime = (int)(currentTime - startTime);
-        remainingTime = timeLimit - elapsedTime - (timepanaltyCount * 10);
+        remainingTime = timeLimit - elapsedTime - timePenaltySeconds + timeAdjustment;
 
         if (remainingTime <= 0)
         {
@@ -171,9 +181,11 @@ public:
         if (!gameRunning)
             return;
 
-        timepanaltyCount++;
+        timePenaltySeconds += seconds;
+        updateTime();
+
         // 시간이 0 이하가 되면 게임 종료
-        if ((remainingTime - timepanaltyCount * 10) <= 0)
+        if (remainingTime <= 0)
         {
             remainingTime = 0;
             timeUp = true;
@@ -192,7 +204,7 @@ public:
 
     void updateTotalScore()
     {
-        totalScore = snowflakeScore + targetScore + timeBonus + levelBonus;
+        totalScore = targetScore * scoreMultiplier;
     }
 
     // Getter 메서드들
@@ -204,6 +216,7 @@ public:
 
     int getRemainingTime() const { return remainingTime; }
     int getTimeLimit() const { return timeLimit; }
+    int getTimeAdjustment() const { return timeAdjustment; }
     bool isTimeUp() const { return timeUp; }
     bool isGameRunning() const { return gameRunning; }
 
@@ -319,8 +332,52 @@ public:
         lastWordCreateTime = time(nullptr);
     }
 
+    void applyItemEffect(ItemBox::ItemType type)
+    {
+        switch (type)
+        {
+        case ItemBox::ItemType::TIME_BONUS:
+            timeAdjustment += 10;
+            lastItemEffectMessage = "TIME +10 SECONDS!";
+            break;
+        case ItemBox::ItemType::TIME_MINUS:
+            timeAdjustment -= 10;
+            lastItemEffectMessage = "TIME -10 SECONDS!";
+            break;
+        case ItemBox::ItemType::SCORE_BOOST:
+            scoreMultiplier = 2;
+            lastItemEffectMessage = "SCORE MULTIPLIED!";
+            break;
+        default:
+            break;
+        }
+
+        lastItemEffectTime = time(nullptr);
+
+        updateTime();
+        updateTotalScore();
+
+        if (remainingTime <= 0)
+        {
+            remainingTime = 0;
+            timeUp = true;
+            gameRunning = false;
+        }
+    }
+
     // Getter 추가
     int getCurrentWordIndex() const { return currentWordIndex; }
+
+    bool shouldDisplayItemEffect(double durationSeconds = 3.0) const
+    {
+        if (lastItemEffectTime == 0)
+        {
+            return false;
+        }
+        return difftime(time(nullptr), lastItemEffectTime) < durationSeconds;
+    }
+
+    const std::string &getLastItemEffectMessage() const { return lastItemEffectMessage; }
 
     bool isWaitingForCompletion() const { return waitingForCompletion; }
 };

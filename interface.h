@@ -9,9 +9,12 @@
 #include <locale.h>
 #include <vector>
 #include <string>
+#include <algorithm>
+#include <cctype>
 
 #include "GameManger.h"
 #include "SentenceManager.h"
+#include "ItemBox.h"
 
 // 기본 화면 인터페이스
 class Screen
@@ -285,6 +288,7 @@ public:
 
         // 1. 데이터 업데이트
         gameManager->updateTime();
+        sentenceManager->spawnItemBoxIfNeeded(gameAreaWidth, gameHeight - 3);
 
         // 눈사람 완성 체크 및 애니메이션 처리
         if (sentenceManager->getCorrectMatches() == 8 && !snowmanCompleted)
@@ -319,6 +323,7 @@ public:
                 gameManager->applyTimePenalty();
                 sentenceManager->setTimePanalty(false);
             }
+            sentenceManager->advanceItemBoxes(gameHeight - 3);
         }
 
         // 단어 생성 처리 (8개 제한 및 완성 체크)
@@ -335,6 +340,14 @@ public:
 
         // 게임 영역 배경 효과
         drawBackgroundEffect();
+
+        // 아이템 효과 알림 (3초간 강조 표시)
+        if (gameManager->shouldDisplayItemEffect())
+        {
+            attron(COLOR_PAIR(4) | A_BOLD);
+            mvprintw(4, 2, "*** %s ***", gameManager->getLastItemEffectMessage().c_str());
+            attroff(COLOR_PAIR(4) | A_BOLD);
+        }
 
         // 게임 영역 내용 (왼쪽) - 배경만
         for (int row = 3; row < gameHeight - 2; row++)
@@ -385,6 +398,24 @@ public:
         }
         attroff(COLOR_PAIR(6) | A_BOLD);
 
+        // 아이템 박스 렌더링
+        attron(COLOR_PAIR(4) | A_BOLD);
+        const auto &itemBoxes = sentenceManager->getItemBoxes();
+        for (const auto &box : itemBoxes)
+        {
+            if (box.getIsActive() && box.getY() >= 3 && box.getY() < gameHeight - 2)
+            {
+                int boxX = box.getX();
+                int boxY = box.getY();
+
+                if (boxX >= 1 && boxX + 2 < gameAreaWidth - 1)
+                {
+                    mvprintw(boxY, boxX, "[?]");
+                }
+            }
+        }
+        attroff(COLOR_PAIR(4) | A_BOLD);
+
         // 큰 눈사람 그리기 (게임 영역 하단)
         int snowmanY = 22; // 화면 하단으로 조정
         int snowmanX = 20;
@@ -399,10 +430,6 @@ public:
         mvprintw(6, rightStartX, "Level: %d", currentLevel);
         mvprintw(7, rightStartX, "Score: %d", gameManager->getTotalScore());
         mvprintw(8, rightStartX, "Time: %s", gameManager->getFormattedTime().c_str());
-        mvprintw(9, rightStartX, "Lives: <3 <3 <3");
-        mvprintw(11, rightStartX, "Snow Score: %d", gameManager->getSnowflakeScore());
-        mvprintw(12, rightStartX, "Target Score: %d", gameManager->getTargetScore());
-        mvprintw(13, rightStartX, "Word Bonus: %d", sentenceManager->getScore());
 
         // 진행 상황 표시
         mvprintw(15, rightStartX, "Progress:");
@@ -425,9 +452,6 @@ public:
         }
 
         mvprintw(18, rightStartX, "Matches: %d/8", sentenceManager->getCorrectMatches());
-
-        // 디버그 정보 추가
-        mvprintw(19, rightStartX, "Blocks: %d", (int)wordBlocks.size());
         attroff(COLOR_PAIR(5));
 
         // 2. 중단: 작은 눈사람 컬렉션
@@ -529,8 +553,29 @@ public:
                     sentenceManager->getInputHandler()->previousInput();
                     break;
                 default:
-                    if (sentenceManager->getInputHandler()->handleInput(key))
+                {
+                    auto handler = sentenceManager->getInputHandler();
+                    int beforeIndex = handler->getCurrentInputIndex();
+                    if (handler->handleInput(key))
+                    {
+                        int usedIndex = beforeIndex;
+                        std::string submitted = handler->getInputAt(usedIndex);
+
+                        std::string lowered = submitted;
+                        std::transform(lowered.begin(), lowered.end(), lowered.begin(), ::tolower);
+                        if (lowered == "random")
+                        {
+                            ItemBox::ItemType type;
+                            if (sentenceManager->tryUseActiveItemBox(type))
+                            {
+                                gameManager->applyItemEffect(type);
+                                handler->clearInput(usedIndex);
+                            }
+                        }
+
                         sentenceManager->checkAnswers();
+                    }
+                }
                     break;
                 }
             }
