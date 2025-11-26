@@ -36,8 +36,7 @@ private:
     double wordCreateInterval; // 추가: 단어 생성 간격 (0.5초)
 
     // 단어 생성 제어 추가
-    int currentWordIndex;       // 현재 생성 중인 단어 인덱스 (0-7)
-    bool allWordsGenerated;     // 8개 단어 모두 생성 완료 여부
+    int currentWordIndex;       // 현재 생성 중인 단어 인덱스 (0-7)   // 8개 단어 모두 생성 완료 여부
     bool waitingForCompletion;  // 완성 대기 중인지
     std::vector<int> wordOrder; // 랜덤 순서로 생성할 단어 인덱스 배열
 
@@ -56,7 +55,7 @@ public:
                              lastWordRenderTime(0),
                              lastWordCreateTime(0),
                              wordCreateInterval(3.0), // 0.5초에서 3초로 변경
-                             currentWordIndex(0), allWordsGenerated(false),
+                             currentWordIndex(0),
                              timepanaltyCount(0),
                              waitingForCompletion(false)
     {
@@ -123,7 +122,7 @@ public:
 
         // 초기화
         currentWordIndex = 0;
-        allWordsGenerated = false;
+
         waitingForCompletion = false;
 
         // 새로운 랜덤 순서 생성
@@ -246,7 +245,7 @@ public:
     bool shouldCreateWordBlock()
     {
         // 이미 8개 모두 생성했거나 완성 대기 중이면 생성하지 않음
-        if (allWordsGenerated || waitingForCompletion)
+        if (waitingForCompletion)
         {
             return false;
         }
@@ -264,48 +263,65 @@ public:
     bool handleWordGeneration(SentenceManager *sentenceManager)
     {
 
-        if (shouldCreateWordBlock() && currentWordIndex < 8)
+        if (shouldCreateWordBlock())
         {
             // 미리 섞어둔 순서대로 단어 생성
+            currentWordIndex = currentWordIndex % 8;
             int wordIndexToCreate = wordOrder[currentWordIndex];
             sentenceManager->createWordBlock(58, wordIndexToCreate);
             currentWordIndex++;
 
-            // 8개 모두 생성 완료
-            if (currentWordIndex >= 8)
-            {
-                allWordsGenerated = true;
-                waitingForCompletion = true;
-            }
             return true;
         }
 
         // correctMatches가 8이 되면 새로운 문장으로 넘어가기
-        if (waitingForCompletion && sentenceManager->getCorrectMatches() == 8)
+        if (!waitingForCompletion && sentenceManager->getCorrectMatches() == 8)
         {
-            // 새로운 랜덤 문장 로드
-            sentenceManager->loadRandomSentence(currentLevel);
 
-            // 상태 초기화
-            currentWordIndex = 0;
-            allWordsGenerated = false;
-            waitingForCompletion = false;
-
-            // 새로운 랜덤 순서 생성
-            initializeWordOrder();
-
-            // 점수 추가 (문장 완성 보너스)
-            addTargetScore();
+            waitingForCompletion = true;
 
             return true;
         }
 
         return false;
     }
+    void notifySnowmanComplete()
+    {
+        // 이미 waitingForCompletion이면 무시
+        if (waitingForCompletion)
+            return;
+
+        waitingForCompletion = true;
+    }
+    void prepareNextRound(SentenceManager *sentenceManager)
+    {
+        // 새로운 문장 로드
+        sentenceManager->loadRandomSentence(currentLevel);
+
+        // 상태 완전 초기화
+        currentWordIndex = 0;
+        waitingForCompletion = false;
+
+        // 입력칸 초기화
+        sentenceManager->getInputHandler()->resetInputs();
+
+        // 단어 블록 초기화
+        auto &blocks = sentenceManager->getWordBlocks();
+        blocks.clear();
+
+        // 새로운 랜덤 순서 생성
+        initializeWordOrder();
+
+        // 점수 추가
+        addTargetScore();
+
+        // 첫 단어 블록 생성
+        lastWordCreateTime = time(nullptr);
+    }
 
     // Getter 추가
     int getCurrentWordIndex() const { return currentWordIndex; }
-    bool areAllWordsGenerated() const { return allWordsGenerated; }
+
     bool isWaitingForCompletion() const { return waitingForCompletion; }
 };
 

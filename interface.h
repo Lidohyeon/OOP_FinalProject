@@ -292,6 +292,7 @@ public:
             snowmanCompleted = true;
             snowmanCompletedTime = time(nullptr);
             showCompletedSnowman = true;
+            gameManager->notifySnowmanComplete();
         }
 
         // 2초 후 입력칸 초기화 및 눈사람 상태 변경
@@ -305,9 +306,7 @@ public:
                 // 입력칸 모두 비우기
                 sentenceManager->getInputHandler()->resetInputs();
 
-                // 모든 단어 블록 비활성화
-                auto &blocks = sentenceManager->getWordBlocks();
-                blocks.clear(); // 벡터 완전 초기화
+                gameManager->prepareNextRound(sentenceManager);
             }
         }
 
