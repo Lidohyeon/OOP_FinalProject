@@ -18,7 +18,7 @@ private:
     int timeBonus;      // 시간 보너스
     int levelBonus;     // 레벨 보너스
 
-    int timepanaltyCount;
+    int timePenaltySeconds;
     int timeAdjustment; // 아이템 효과로 조정된 시간 (초)
     int scoreMultiplier;
     std::string lastItemEffectMessage;
@@ -61,7 +61,7 @@ public:
                              lastWordCreateTime(0),
                              wordCreateInterval(3.0), // 0.5초에서 3초로 변경
                              currentWordIndex(0),
-                             timepanaltyCount(0),
+                             timePenaltySeconds(0),
                              timeAdjustment(0),
                              scoreMultiplier(1),
                              lastItemEffectTime(0),
@@ -126,7 +126,7 @@ public:
         levelBonus = currentLevel * LEVEL_BONUS_BASE;
         lastWordRenderTime = startTime;
         lastWordCreateTime = startTime;
-        timepanaltyCount = 0;
+        timePenaltySeconds = 0;
         timeAdjustment = 0;
         scoreMultiplier = 1;
 
@@ -152,7 +152,7 @@ public:
 
         time_t currentTime = time(nullptr);
         int elapsedTime = (int)(currentTime - startTime);
-        remainingTime = timeLimit - elapsedTime - (timepanaltyCount * 10) + timeAdjustment;
+        remainingTime = timeLimit - elapsedTime - timePenaltySeconds + timeAdjustment;
 
         if (remainingTime <= 0)
         {
@@ -181,9 +181,11 @@ public:
         if (!gameRunning)
             return;
 
-        timepanaltyCount++;
+        timePenaltySeconds += seconds;
+        updateTime();
+
         // 시간이 0 이하가 되면 게임 종료
-        if ((remainingTime - timepanaltyCount * 10) <= 0)
+        if (remainingTime <= 0)
         {
             remainingTime = 0;
             timeUp = true;
@@ -202,7 +204,7 @@ public:
 
     void updateTotalScore()
     {
-        totalScore = (snowflakeScore + targetScore + timeBonus + levelBonus) * scoreMultiplier;
+        totalScore = targetScore * scoreMultiplier;
     }
 
     // Getter 메서드들

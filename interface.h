@@ -430,10 +430,6 @@ public:
         mvprintw(6, rightStartX, "Level: %d", currentLevel);
         mvprintw(7, rightStartX, "Score: %d", gameManager->getTotalScore());
         mvprintw(8, rightStartX, "Time: %s", gameManager->getFormattedTime().c_str());
-        mvprintw(9, rightStartX, "Lives: <3 <3 <3");
-        mvprintw(11, rightStartX, "Snow Score: %d", gameManager->getSnowflakeScore());
-        mvprintw(12, rightStartX, "Target Score: %d", gameManager->getTargetScore());
-        mvprintw(13, rightStartX, "Word Bonus: %d", sentenceManager->getScore());
 
         // 진행 상황 표시
         mvprintw(15, rightStartX, "Progress:");
@@ -456,9 +452,6 @@ public:
         }
 
         mvprintw(18, rightStartX, "Matches: %d/8", sentenceManager->getCorrectMatches());
-
-        // 디버그 정보 추가
-        mvprintw(19, rightStartX, "Blocks: %d", (int)wordBlocks.size());
         attroff(COLOR_PAIR(5));
 
         // 2. 중단: 작은 눈사람 컬렉션
