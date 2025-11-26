@@ -24,7 +24,7 @@ public:
         : FallingObject(areaWidth, areaHeight, speed)
     {
         // 랜덤 아이템 타입 결정
-        itemType = static_cast<ItemType>(rand() % 4);
+        itemType = static_cast<ItemType>(rand() % 3);
 
         // 랜덤 x 위치 (아이템 박스는 3칸 폭: [?])
         x = rand() % (gameAreaWidth - 4) + 1;

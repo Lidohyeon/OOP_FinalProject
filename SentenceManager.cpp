@@ -2,6 +2,7 @@
 #include <algorithm>
 #include <cstdlib>
 #include "WordBlock.h"
+#include "ItemBox.h"
 
 // ========== InputHandler 구현 ==========
 bool InputHandler::handleInput(int key)
@@ -236,6 +237,30 @@ void SentenceManager::advanceWordBlocks(int maxHeight)
     }
 }
 
+void SentenceManager::advanceItemBoxes(int maxHeight)
+{
+    (void)maxHeight;
+
+    for (auto &box : itemBoxes)
+    {
+        if (!box.getIsActive())
+        {
+            continue;
+        }
+
+        box.fall();
+
+        if (!box.getIsActive())
+        {
+            box.setActive(false);
+        }
+    }
+
+    itemBoxes.erase(std::remove_if(itemBoxes.begin(), itemBoxes.end(), [](const ItemBox &box)
+                                   { return !box.getIsActive(); }),
+                    itemBoxes.end());
+}
+
 void SentenceManager::createWordBlock(int maxWidth, int wordIndex)
 {
     wordAreaWidth = maxWidth;
@@ -262,4 +287,35 @@ void SentenceManager::createWordBlock(int maxWidth, int wordIndex)
     block.syncProperties();
 
     wordBlocks.push_back(block);
+}
+
+void SentenceManager::createItemBox(int maxWidth, int maxHeight)
+{
+    ItemBox box(maxWidth, maxHeight);
+    box.setPosition(rand() % (maxWidth - 4) + 1, 3);
+    box.setActive(true);
+    itemBoxes.push_back(box);
+}
+
+void SentenceManager::spawnItemBoxIfNeeded(int maxWidth, int maxHeight)
+{
+    time_t now = time(nullptr);
+    if (difftime(now, lastItemBoxSpawnTime) >= ITEMBOX_INTERVAL)
+    {
+        createItemBox(maxWidth, maxHeight);
+        lastItemBoxSpawnTime = now;
+    }
+}
+
+bool SentenceManager::tryUseActiveItemBox(ItemBox::ItemType &typeOut)
+{
+    for (auto &box : itemBoxes)
+    {
+        if (box.getIsActive())
+        {
+            typeOut = box.applyRandomEffect();
+            return true;
+        }
+    }
+    return false;
 }

@@ -6,6 +6,7 @@
 #include <vector>
 #include "SentenceManager.h"
 #include "WordBlock.h"
+#include "ItemBox.h"
 
 class GameManager
 {
@@ -18,6 +19,8 @@ private:
     int levelBonus;     // 레벨 보너스
 
     int timepanaltyCount;
+    int timeAdjustment; // 아이템 효과로 조정된 시간 (초)
+    int scoreMultiplier;
 
     // 시간 관련
     time_t startTime;  // 게임 시작 시간
@@ -57,6 +60,8 @@ public:
                              wordCreateInterval(3.0), // 0.5초에서 3초로 변경
                              currentWordIndex(0),
                              timepanaltyCount(0),
+                             timeAdjustment(0),
+                             scoreMultiplier(1),
                              waitingForCompletion(false)
     {
         // 레벨에 따른 제한시간 설정
@@ -119,6 +124,8 @@ public:
         lastWordRenderTime = startTime;
         lastWordCreateTime = startTime;
         timepanaltyCount = 0;
+        timeAdjustment = 0;
+        scoreMultiplier = 1;
 
         // 초기화
         currentWordIndex = 0;
@@ -142,7 +149,7 @@ public:
 
         time_t currentTime = time(nullptr);
         int elapsedTime = (int)(currentTime - startTime);
-        remainingTime = timeLimit - elapsedTime - (timepanaltyCount * 10);
+        remainingTime = timeLimit - elapsedTime - (timepanaltyCount * 10) + timeAdjustment;
 
         if (remainingTime <= 0)
         {
@@ -192,7 +199,7 @@ public:
 
     void updateTotalScore()
     {
-        totalScore = snowflakeScore + targetScore + timeBonus + levelBonus;
+        totalScore = (snowflakeScore + targetScore + timeBonus + levelBonus) * scoreMultiplier;
     }
 
     // Getter 메서드들
@@ -204,6 +211,7 @@ public:
 
     int getRemainingTime() const { return remainingTime; }
     int getTimeLimit() const { return timeLimit; }
+    int getTimeAdjustment() const { return timeAdjustment; }
     bool isTimeUp() const { return timeUp; }
     bool isGameRunning() const { return gameRunning; }
 
@@ -317,6 +325,34 @@ public:
 
         // 첫 단어 블록 생성
         lastWordCreateTime = time(nullptr);
+    }
+
+    void applyItemEffect(ItemBox::ItemType type)
+    {
+        switch (type)
+        {
+        case ItemBox::ItemType::TIME_BONUS:
+            timeAdjustment += 10;
+            break;
+        case ItemBox::ItemType::TIME_MINUS:
+            timeAdjustment -= 10;
+            break;
+        case ItemBox::ItemType::SCORE_BOOST:
+            scoreMultiplier = 2;
+            break;
+        default:
+            break;
+        }
+
+        updateTime();
+        updateTotalScore();
+
+        if (remainingTime <= 0)
+        {
+            remainingTime = 0;
+            timeUp = true;
+            gameRunning = false;
+        }
     }
 
     // Getter 추가

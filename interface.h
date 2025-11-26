@@ -9,9 +9,12 @@
 #include <locale.h>
 #include <vector>
 #include <string>
+#include <algorithm>
+#include <cctype>
 
 #include "GameManger.h"
 #include "SentenceManager.h"
+#include "ItemBox.h"
 
 // 기본 화면 인터페이스
 class Screen
@@ -285,6 +288,7 @@ public:
 
         // 1. 데이터 업데이트
         gameManager->updateTime();
+        sentenceManager->spawnItemBoxIfNeeded(gameAreaWidth, gameHeight - 3);
 
         // 눈사람 완성 체크 및 애니메이션 처리
         if (sentenceManager->getCorrectMatches() == 8 && !snowmanCompleted)
@@ -319,6 +323,7 @@ public:
                 gameManager->applyTimePenalty();
                 sentenceManager->setTimePanalty(false);
             }
+            sentenceManager->advanceItemBoxes(gameHeight - 3);
         }
 
         // 단어 생성 처리 (8개 제한 및 완성 체크)
@@ -384,6 +389,24 @@ public:
             }
         }
         attroff(COLOR_PAIR(6) | A_BOLD);
+
+        // 아이템 박스 렌더링
+        attron(COLOR_PAIR(4) | A_BOLD);
+        const auto &itemBoxes = sentenceManager->getItemBoxes();
+        for (const auto &box : itemBoxes)
+        {
+            if (box.getIsActive() && box.getY() >= 3 && box.getY() < gameHeight - 2)
+            {
+                int boxX = box.getX();
+                int boxY = box.getY();
+
+                if (boxX >= 1 && boxX + 2 < gameAreaWidth - 1)
+                {
+                    mvprintw(boxY, boxX, "[?]");
+                }
+            }
+        }
+        attroff(COLOR_PAIR(4) | A_BOLD);
 
         // 큰 눈사람 그리기 (게임 영역 하단)
         int snowmanY = 22; // 화면 하단으로 조정
@@ -529,8 +552,29 @@ public:
                     sentenceManager->getInputHandler()->previousInput();
                     break;
                 default:
-                    if (sentenceManager->getInputHandler()->handleInput(key))
+                {
+                    auto handler = sentenceManager->getInputHandler();
+                    int beforeIndex = handler->getCurrentInputIndex();
+                    if (handler->handleInput(key))
+                    {
+                        int usedIndex = beforeIndex;
+                        std::string submitted = handler->getInputAt(usedIndex);
+
+                        std::string lowered = submitted;
+                        std::transform(lowered.begin(), lowered.end(), lowered.begin(), ::tolower);
+                        if (lowered == "random")
+                        {
+                            ItemBox::ItemType type;
+                            if (sentenceManager->tryUseActiveItemBox(type))
+                            {
+                                gameManager->applyItemEffect(type);
+                                handler->clearInput(usedIndex);
+                            }
+                        }
+
                         sentenceManager->checkAnswers();
+                    }
+                }
                     break;
                 }
             }
