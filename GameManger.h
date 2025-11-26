@@ -23,6 +23,7 @@ private:
     int scoreMultiplier;
     std::string lastItemEffectMessage;
     time_t lastItemEffectTime;
+    int collectedSnowmen;
 
     // 시간 관련
     time_t startTime;  // 게임 시작 시간
@@ -65,7 +66,8 @@ public:
                              timeAdjustment(0),
                              scoreMultiplier(1),
                              lastItemEffectTime(0),
-                             waitingForCompletion(false)
+                             waitingForCompletion(false),
+                             collectedSnowmen(0)
     {
         // 레벨에 따른 제한시간 설정
         switch (level)
@@ -129,6 +131,7 @@ public:
         timePenaltySeconds = 0;
         timeAdjustment = 0;
         scoreMultiplier = 1;
+        collectedSnowmen = 0;
 
         // 초기화
         currentWordIndex = 0;
@@ -225,8 +228,8 @@ public:
     {
         int minutes = remainingTime / 60;
         int seconds = remainingTime % 60;
-        char buffer[6];
-        sprintf(buffer, "%02d:%02d", minutes, seconds);
+        char buffer[16];
+        snprintf(buffer, sizeof(buffer), "%02d:%02d", minutes, seconds);
         return std::string(buffer);
     }
 
@@ -305,6 +308,7 @@ public:
             return;
 
         waitingForCompletion = true;
+        collectedSnowmen++;
     }
     void prepareNextRound(SentenceManager *sentenceManager)
     {
@@ -380,6 +384,8 @@ public:
     const std::string &getLastItemEffectMessage() const { return lastItemEffectMessage; }
 
     bool isWaitingForCompletion() const { return waitingForCompletion; }
+
+    int getCollectedSnowmen() const { return collectedSnowmen; }
 };
 
 #endif // GAMEMANAGER_H
