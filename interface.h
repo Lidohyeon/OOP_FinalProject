@@ -9,9 +9,12 @@
 #include <locale.h>
 #include <vector>
 #include <string>
+#include <algorithm>
+#include <cctype>
 
 #include "GameManger.h"
 #include "SentenceManager.h"
+#include "ItemBox.h"
 
 // 기본 화면 인터페이스
 class Screen
@@ -131,24 +134,25 @@ private:
     void drawLifeSnowmen(int y, int x, int count)
     {
         attron(COLOR_PAIR(2)); // YELLOW
-        // 타이틀
         mvprintw(y, x, "[ COLLECTION ]");
 
-        // 눈사람 10개를 두 줄로 배치 (5개씩) -> 공간 활용 Up
-        for (int i = 0; i < 10; i++)
-        {
-            int drawY = y + 2 + (i / 5) * 2; // 2줄로 나눔
-            int drawX = x + (i % 5) * 6;     // 간격 넓힘
+        int maxSnowmen = 8;
+        int displayCount = std::min(count, maxSnowmen);
 
-            if (i < count)
+        for (int i = 0; i < maxSnowmen; i++)
+        {
+            int drawY = y + 2 + (i / 4) * 2; // 2줄로 나눔
+            int drawX = x + (i % 4) * 7;     // 간격 넓힘
+
+            if (i < displayCount)
             {
                 attron(A_BOLD);
-                mvprintw(drawY, drawX, " (8) "); // 획득한 눈사람 (진하게)
+                mvprintw(drawY, drawX, " (8) ");
                 attroff(A_BOLD);
             }
             else
             {
-                mvprintw(drawY, drawX, " ( ) "); // 빈 자리
+                mvprintw(drawY, drawX, " ( ) ");
             }
         }
         attroff(COLOR_PAIR(2));
@@ -285,6 +289,7 @@ public:
 
         // 1. 데이터 업데이트
         gameManager->updateTime();
+        sentenceManager->spawnItemBoxIfNeeded(gameAreaWidth, gameHeight - 3);
 
         // 눈사람 완성 체크 및 애니메이션 처리
         if (sentenceManager->getCorrectMatches() == 8 && !snowmanCompleted)
@@ -319,6 +324,7 @@ public:
                 gameManager->applyTimePenalty();
                 sentenceManager->setTimePanalty(false);
             }
+            sentenceManager->advanceItemBoxes(gameHeight - 3);
         }
 
         // 단어 생성 처리 (8개 제한 및 완성 체크)
@@ -385,57 +391,88 @@ public:
         }
         attroff(COLOR_PAIR(6) | A_BOLD);
 
-        // 큰 눈사람 그리기 (게임 영역 하단)
-        int snowmanY = 22; // 화면 하단으로 조정
-        int snowmanX = 20;
-        drawBigSnowman(snowmanY, snowmanX, showCompletedSnowman);
+        // 아이템 박스 렌더링
+        attron(COLOR_PAIR(4) | A_BOLD);
+        const auto &itemBoxes = sentenceManager->getItemBoxes();
+        for (const auto &box : itemBoxes)
+        {
+            if (box.getIsActive() && box.getY() >= 3 && box.getY() < gameHeight - 2)
+            {
+                int boxX = box.getX();
+                int boxY = box.getY();
+
+                if (boxX >= 1 && boxX + 2 < gameAreaWidth - 1)
+                {
+                    mvprintw(boxY, boxX, "[?]");
+                }
+            }
+        }
+        attroff(COLOR_PAIR(4) | A_BOLD);
 
         // 오른쪽 영역
 
         // 1. 상단: 게임 정보 패널
         int rightStartX = gameAreaWidth + 2;
         attron(COLOR_PAIR(5));
-        mvprintw(4, rightStartX, "=== GAME INFO ===");
-        mvprintw(6, rightStartX, "Level: %d", currentLevel);
-        mvprintw(7, rightStartX, "Score: %d", gameManager->getTotalScore());
-        mvprintw(8, rightStartX, "Time: %s", gameManager->getFormattedTime().c_str());
-        mvprintw(9, rightStartX, "Lives: <3 <3 <3");
-        mvprintw(11, rightStartX, "Snow Score: %d", gameManager->getSnowflakeScore());
-        mvprintw(12, rightStartX, "Target Score: %d", gameManager->getTargetScore());
-        mvprintw(13, rightStartX, "Word Bonus: %d", sentenceManager->getScore());
+        mvprintw(4, rightStartX, "╔════════════════════╗");
+        mvprintw(5, rightStartX, "║   TIME REMAINING   ║");
+        attron(A_BOLD);
+        mvprintw(6, rightStartX, "║      %s      ║", gameManager->getFormattedTime().c_str());
+        attroff(A_BOLD);
+        mvprintw(7, rightStartX, "╚════════════════════╝");
+
+        // 아이템 효과 알림 (3초간 강조 표시) - 오른쪽에 크게 배치
+        attron(COLOR_PAIR(4) | A_BOLD);
+        mvprintw(9, rightStartX, "┌────────────────────┐");
+        if (gameManager->shouldDisplayItemEffect())
+        {
+            mvprintw(10, rightStartX, "│ %-18s │", gameManager->getLastItemEffectMessage().c_str());
+        }
+        else
+        {
+            mvprintw(10, rightStartX, "│  ITEM EFFECT READY │");
+        }
+        mvprintw(11, rightStartX, "└────────────────────┘");
+        attroff(COLOR_PAIR(4) | A_BOLD);
+
+        mvprintw(13, rightStartX, "=== GAME INFO ===");
+        mvprintw(14, rightStartX, "Level: %d", currentLevel);
+        mvprintw(15, rightStartX, "Score: %d", gameManager->getTotalScore());
 
         // 진행 상황 표시
-        mvprintw(15, rightStartX, "Progress:");
+        mvprintw(17, rightStartX, "Progress:");
         if (showCompletedSnowman)
         {
             attron(COLOR_PAIR(2) | A_BOLD);
-            mvprintw(16, rightStartX, "SNOWMAN COMPLETE!");
-            mvprintw(17, rightStartX, "Great job! +500 pts");
+            mvprintw(18, rightStartX, "SNOWMAN COMPLETE!");
+            mvprintw(19, rightStartX, "Great job! +500 pts");
             attroff(COLOR_PAIR(2) | A_BOLD);
         }
         else if (gameManager->isWaitingForCompletion())
         {
             attron(COLOR_PAIR(2) | A_BOLD);
-            mvprintw(16, rightStartX, "Complete sentence!");
+            mvprintw(18, rightStartX, "Complete sentence!");
             attroff(COLOR_PAIR(2) | A_BOLD);
         }
         else
         {
-            mvprintw(16, rightStartX, "Words: %d/8", gameManager->getCurrentWordIndex());
+            mvprintw(18, rightStartX, "Words: %d/8", gameManager->getCurrentWordIndex());
         }
 
-        mvprintw(18, rightStartX, "Matches: %d/8", sentenceManager->getCorrectMatches());
-
-        // 디버그 정보 추가
-        mvprintw(19, rightStartX, "Blocks: %d", (int)wordBlocks.size());
+        mvprintw(20, rightStartX, "Matches: %d/8", sentenceManager->getCorrectMatches());
         attroff(COLOR_PAIR(5));
 
         // 2. 중단: 작은 눈사람 컬렉션
-        int collectionY = 20;
-        drawLifeSnowmen(collectionY, rightStartX, sentenceManager->getCorrectMatches());
+        int collectionY = 22;
+        drawLifeSnowmen(collectionY, rightStartX, gameManager->getCollectedSnowmen());
+
+        // 2.5. 큰 눈사람을 오른쪽으로 이동하여 단어 블록을 가리지 않음
+        int snowmanY = 24;
+        int snowmanX = rightStartX + 24;
+        drawBigSnowman(snowmanY, snowmanX, showCompletedSnowman);
 
         // 3. 하단: 입력창
-        int inputStartY = 32;
+        int inputStartY = 36;
         attron(COLOR_PAIR(3));
         mvprintw(inputStartY, rightStartX, "=== WORD INPUT ===");
 
@@ -529,8 +566,29 @@ public:
                     sentenceManager->getInputHandler()->previousInput();
                     break;
                 default:
-                    if (sentenceManager->getInputHandler()->handleInput(key))
+                {
+                    auto handler = sentenceManager->getInputHandler();
+                    int beforeIndex = handler->getCurrentInputIndex();
+                    if (handler->handleInput(key))
+                    {
+                        int usedIndex = beforeIndex;
+                        std::string submitted = handler->getInputAt(usedIndex);
+
+                        std::string lowered = submitted;
+                        std::transform(lowered.begin(), lowered.end(), lowered.begin(), ::tolower);
+                        if (lowered == "random")
+                        {
+                            ItemBox::ItemType type;
+                            if (sentenceManager->tryUseActiveItemBox(type))
+                            {
+                                gameManager->applyItemEffect(type);
+                                handler->clearInput(usedIndex);
+                            }
+                        }
+
                         sentenceManager->checkAnswers();
+                    }
+                }
                     break;
                 }
             }
