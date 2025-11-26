@@ -342,6 +342,14 @@ public:
         // 게임 영역 배경 효과
         drawBackgroundEffect();
 
+        // 아이템 효과 알림 (3초간 강조 표시)
+        if (gameManager->shouldDisplayItemEffect())
+        {
+            attron(COLOR_PAIR(4) | A_BOLD);
+            mvprintw(4, 2, "*** %s ***", gameManager->getLastItemEffectMessage().c_str());
+            attroff(COLOR_PAIR(4) | A_BOLD);
+        }
+
         // 게임 영역 내용 (왼쪽) - 배경만
         for (int row = 3; row < gameHeight - 2; row++)
         {
