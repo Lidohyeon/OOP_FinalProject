@@ -8,16 +8,16 @@
 class ItemBox : public FallingObject
 {
 public:
-    enum class ItemType {
-        EXTRA_LIFE,     // 목숨 +1
-        TIME_BONUS,     // 시간 +10초
-        SLOW_MOTION,    // 낙하 속도 감소
-        SCORE_BOOST     // 점수 2배
+    enum class ItemType
+    {
+        EXTRA_LIFE, // 목숨 +1
+        TIME_BONUS, // 시간 +10초
+        TIME_MINUS, // 시간 -10초
+        SCORE_BOOST // 점수 2배
     };
 
 private:
     ItemType itemType;
-    char displayChar;   // 화면에 표시될 문자 ('L', 'T', 'S', 'B')
 
 public:
     ItemBox(int areaWidth, int areaHeight, double speed = 0.8)
@@ -25,22 +25,6 @@ public:
     {
         // 랜덤 아이템 타입 결정
         itemType = static_cast<ItemType>(rand() % 4);
-        
-        // 아이템 타입에 따라 표시 문자 설정
-        switch (itemType) {
-            case ItemType::EXTRA_LIFE:
-                displayChar = 'L'; // Life
-                break;
-            case ItemType::TIME_BONUS:
-                displayChar = 'T'; // Time
-                break;
-            case ItemType::SLOW_MOTION:
-                displayChar = 'S'; // Slow
-                break;
-            case ItemType::SCORE_BOOST:
-                displayChar = 'B'; // Boost
-                break;
-        }
 
         // 랜덤 x 위치 (아이템 박스는 3칸 폭: [?])
         x = rand() % (gameAreaWidth - 4) + 1;
@@ -50,13 +34,15 @@ public:
     // 낙하 (바닥 도달 시 페널티 없음)
     void fall() override
     {
-        if (!isActive) return;
+        if (!isActive)
+            return;
 
         y += static_cast<int>(fallSpeed);
 
         // 바닥에 도달하면 그냥 사라짐 (페널티 없음)
-        if (y >= gameAreaHeight - 3) {
-            isActive = false;  // 비활성화
+        if (y >= gameAreaHeight - 3)
+        {
+            isActive = false; // 비활성화
             y = gameAreaHeight - 3;
             // hasReachedBottom은 설정하지 않음 → 페널티 적용 안됨
         }
@@ -65,7 +51,8 @@ public:
     // 화면에 그리기
     void draw() const override
     {
-        if (!isActive) return;
+        if (!isActive)
+            return;
         // ncurses로 그리기 (PlayScreen에서 호출)
         // mvprintw(y, x, "[%c]", displayChar);
     }
@@ -84,17 +71,18 @@ public:
     // 아이템 효과 설명 문자열
     std::string getEffectDescription() const
     {
-        switch (itemType) {
-            case ItemType::EXTRA_LIFE:
-                return "Extra Life +1";
-            case ItemType::TIME_BONUS:
-                return "Time +10 sec";
-            case ItemType::SLOW_MOTION:
-                return "Slow Motion";
-            case ItemType::SCORE_BOOST:
-                return "Score x2";
-            default:
-                return "Unknown";
+        switch (itemType)
+        {
+        case ItemType::EXTRA_LIFE:
+            return "Extra Life +1";
+        case ItemType::TIME_BONUS:
+            return "Time +10 sec";
+        case ItemType::SLOW_MOTION:
+            return "Slow Motion";
+        case ItemType::SCORE_BOOST:
+            return "Score x2";
+        default:
+            return "Unknown";
         }
     }
 };
