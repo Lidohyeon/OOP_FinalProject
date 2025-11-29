@@ -1,0 +1,131 @@
+@startuml ActivityDiagram_WordInput
+
+title SNOW MAN GAME - Word Input Processing Activity Diagram
+
+start
+
+:Detect Key Input (getch);
+
+if (key == ESC?) then (yes)
+    :gameRunning = false;
+    :Process Game End;
+    stop
+endif
+
+if (key == TAB || key == KEY_DOWN?) then (yes)
+    :currentInputIndex++;
+    if (currentInputIndex >= 8?) then (yes)
+        :currentInputIndex = 0;
+    endif
+    :Move to Next Input Field;
+    stop
+endif
+
+if (key == KEY_UP?) then (yes)
+    :currentInputIndex--;
+    if (currentInputIndex < 0?) then (yes)
+        :currentInputIndex = 7;
+    endif
+    :Move to Previous Input Field;
+    stop
+endif
+
+if (key == BACKSPACE?) then (yes)
+    if (currentInput.length() > 0?) then (yes)
+        :Delete Last Character;
+        :currentInput.pop_back();
+    endif
+    stop
+endif
+
+if (key == ENTER?) then (yes)
+    :beforeIndex = currentInputIndex;
+    :submitted = userInputs[beforeIndex];
+    
+    :lowered = toLower(submitted);
+    
+    if (lowered == "random"?) then (yes)
+        partition "Item Usage Processing" {
+            :tryUseActiveItemBox(typeOut);
+            
+            if (Active Item Box Exists?) then (yes)
+                :Select Lowest Position Item;
+                :type = applyRandomEffect();
+                
+                switch (type)
+                case (TIME_BONUS)
+                    :timeAdjustment += 10;
+                    :lastItemEffectMessage = "TIME +10 SECONDS!";
+                case (TIME_MINUS)
+                    :timeAdjustment -= 10;
+                    :lastItemEffectMessage = "TIME -10 SECONDS!";
+                case (SCORE_BOOST)
+                    :scoreMultiplier = 2;
+                    :lastItemEffectMessage = "SCORE MULTIPLIED!";
+                endswitch
+                
+                :updateTime();
+                :updateTotalScore();
+                :clearInput(beforeIndex);
+                
+                if (remainingTime <= 0?) then (yes)
+                    :gameRunning = false;
+                endif
+            else (no)
+                :No Effect (No Item Available);
+            endif
+        }
+    else (no)
+        partition "Word Matching Processing (checkAnswers)" {
+            :Iterate targetWords;
+            
+            while (For Each targetWord)
+                :inputLower = toLower(userInputs[i]);
+                :targetLower = toLower(targetWords[i]);
+                
+                if (inputLower == targetLower?) then (yes)
+                    :Find Matching WordBlock;
+                    
+                    if (Matching WordBlock Exists?) then (yes)
+                        :block.enteredInInput();
+                        :block.isActive = false;
+                        :block.active = false;
+                    endif
+                    
+                    :correctMatches++;
+                endif
+            endwhile
+            
+            if (correctMatches == 8?) then (yes)
+                partition "Snowman Complete" {
+                    :snowmanCompleted = true;
+                    :snowmanCompletedTime = time(nullptr);
+                    :showCompletedSnowman = true;
+                    :notifySnowmanComplete();
+                    :collectedSnowmen++;
+                    
+                    note right
+                        After 2 seconds,
+                        prepareNextRound() called
+                        in UpdateScreen
+                    end note
+                }
+            endif
+        }
+    endif
+    
+    :Move to Next Input Field;
+    stop
+endif
+
+' Normal Character Input
+if (isprint(key)?) then (yes)
+    if (currentInput.length() < MAX_INPUT_LENGTH?) then (yes)
+        :currentInput += (char)key;
+        :userInputs[currentInputIndex] = currentInput;
+    endif
+endif
+
+stop
+
+@enduml

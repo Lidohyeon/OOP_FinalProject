@@ -1,0 +1,259 @@
+@startuml ClassDiagram
+
+skinparam classAttributeIconSize 0
+skinparam linetype ortho
+skinparam classFontSize 11
+skinparam classAttributeFontSize 10
+
+title SNOW MAN GAME - Class Diagram
+
+' =============================================
+' Abstract Classes
+' =============================================
+abstract class Screen {
+    + {abstract} UpdateScreen(): void
+    + {abstract} resizeScreen(): void
+    + {abstract} shapeScreen(): void
+}
+
+abstract class FallingObject {
+    # x: int
+    # y: int
+    # initialX: int
+    # initialY: int
+    # isActive: bool
+    # fallSpeed: double
+    # gameAreaWidth: int
+    # gameAreaHeight: int
+    # hasReachedBottom: bool
+    --
+    + FallingObject(areaWidth: int, areaHeight: int, speed: double)
+    + {abstract} draw(): void
+    + fall(): void
+    + getX(): int
+    + getY(): int
+    + getIsActive(): bool
+    + getHasReachedBottom(): bool
+    + setPosition(newX: int, newY: int): void
+    + setActive(active: bool): void
+    + setFallSpeed(speed: double): void
+    + reset(): void
+    + checkAndResetBottomReached(): bool
+    - {static} initRandomSeed(): void
+}
+
+' =============================================
+' Screen Classes (Inherits from Screen)
+' =============================================
+class InitialScreen {
+    - selectedLevel: int
+    - playButtonPressed: bool
+    --
+    + InitialScreen()
+    + ~InitialScreen()
+    + UpdateScreen(): void
+    + resizeScreen(): void
+    + shapeScreen(): void
+    + runInitialScreen(): void
+}
+
+class PlayScreen {
+    - currentLevel: int
+    - gameWidth: int
+    - gameHeight: int
+    - gameRunning: bool
+    - gameAreaWidth: int
+    - scoreAreaWidth: int
+    - gameManager: GameManager*
+    - sentenceManager: SentenceManager*
+    - snowmanCompleted: bool
+    - snowmanCompletedTime: time_t
+    - showCompletedSnowman: bool
+    --
+    + PlayScreen(level: int)
+    + ~PlayScreen()
+    + UpdateScreen(): void
+    + resizeScreen(): void
+    + shapeScreen(): void
+    + runPlayScreen(): void
+    - drawFrame(): void
+    - drawBigSnowman(y: int, x: int, isComplete: bool): void
+    - drawLifeSnowmen(y: int, x: int, count: int): void
+    - drawInfoPanel(): void
+    - drawInputArea(): void
+    - drawBackgroundEffect(): void
+    - resizeTerminal(width: int, height: int): void
+}
+
+' =============================================
+' Game Logic Classes
+' =============================================
+class GameManager {
+    - totalScore: int
+    - snowflakeScore: int
+    - targetScore: int
+    - timeBonus: int
+    - levelBonus: int
+    - timePenaltySeconds: int
+    - timeAdjustment: int
+    - scoreMultiplier: int
+    - lastItemEffectMessage: string
+    - lastItemEffectTime: time_t
+    - collectedSnowmen: int
+    - startTime: time_t
+    - timeLimit: int
+    - remainingTime: int
+    - timeUp: bool
+    - currentLevel: int
+    - gameRunning: bool
+    - currentWordIndex: int
+    - waitingForCompletion: bool
+    - wordOrder: vector<int>
+    --
+    + GameManager(level: int)
+    + startGame(sm: SentenceManager*): void
+    + updateTime(): void
+    + applyTimePenalty(seconds: int): void
+    + endGame(): void
+    + checkGameEnd(): bool
+    + handleWordGeneration(sm: SentenceManager*): bool
+    + notifySnowmanComplete(): void
+    + prepareNextRound(sm: SentenceManager*): void
+    + applyItemEffect(type: ItemType): void
+    + getTotalScore(): int
+    + getRemainingTime(): int
+    + getFormattedTime(): string
+    + isTimeUp(): bool
+    + isGameRunning(): bool
+    + getCollectedSnowmen(): int
+}
+
+class SentenceManager {
+    - inputHandler: InputHandler*
+    - dictionary: Dictionary*
+    - targetWords: vector<string>
+    - correctMatches: int
+    - wordBlocks: vector<WordBlock>
+    - itemBoxes: vector<ItemBox>
+    - currentLevel: int
+    - timePanalty: bool
+    --
+    + SentenceManager(level: int)
+    + ~SentenceManager()
+    + loadRandomSentence(level: int): void
+    + checkAnswers(): void
+    + createWordBlock(maxWidth: int, wordIndex: int): void
+    + createItemBox(maxWidth: int, maxHeight: int): void
+    + advanceWordBlocks(maxHeight: int): void
+    + advanceItemBoxes(maxHeight: int): void
+    + tryUseActiveItemBox(typeOut: ItemType&): bool
+    + getWordBlocks(): vector<WordBlock>&
+    + getItemBoxes(): vector<ItemBox>&
+    + getScore(): int
+    + getInputHandler(): InputHandler*
+    + getCorrectMatches(): int
+}
+
+class Dictionary {
+    - levelSentences: map<int, vector<string>>
+    - currentWords: vector<string>
+    - currentLevel: int
+    - currentSentenceIndex: int
+    --
+    + Dictionary()
+    + ~Dictionary()
+    + initializeSentences(): void
+    + getSentenceCount(level: int): int
+    + getWordsForLevel(level: int, idx: int): vector<string>
+    + getFullSentence(level: int, idx: int): string
+    + getRandomSentenceWords(level: int): vector<string>
+    + getCurrentLevel(): int
+}
+
+class InputHandler {
+    - userInputs: vector<string>
+    - currentInputIndex: int
+    - currentInput: string
+    - inputComplete: bool
+    --
+    + InputHandler()
+    + handleInput(key: int): bool
+    + resetInputs(): void
+    + nextInput(): void
+    + previousInput(): void
+    + getUserInputs(): vector<string>&
+    + getCurrentInputIndex(): int
+    + isWordCorrect(idx: int, target: string): bool
+    + clearInput(index: int): void
+    + getInputAt(index: int): string
+}
+
+' =============================================
+' Game Object Classes (Inherits from FallingObject)
+' =============================================
+class WordBlock {
+    - text: string
+    - orderIndex: int
+    - isInInput: bool
+    + active: bool
+    + word: string
+    --
+    + WordBlock()
+    + WordBlock(word: string, order: int, ...)
+    + draw(): void
+    + fall(): void
+    + reset(): void
+    + enteredInInput(): void
+    + deletedInput(): void
+    + getText(): string&
+    + getOrderIndex(): int
+    + matchesWord(input: string): bool
+}
+
+class ItemBox {
+    - itemType: ItemType
+    - fallAccumulator: double
+    --
+    + ItemBox(areaWidth: int, areaHeight: int, speed: double)
+    + fall(): void
+    + draw(): void
+    + applyRandomEffect(): ItemType
+    + getItemType(): ItemType
+    + getEffectDescription(): string
+}
+
+enum ItemType <<enumeration>> {
+    TIME_BONUS
+    TIME_MINUS
+    SCORE_BOOST
+}
+
+' =============================================
+' Relationships
+' =============================================
+
+' Inheritance
+Screen <|-- InitialScreen
+Screen <|-- PlayScreen
+FallingObject <|-- WordBlock
+FallingObject <|-- ItemBox
+
+' Composition
+PlayScreen *-down- GameManager : contains >
+PlayScreen *-down- SentenceManager : contains >
+SentenceManager *-down- InputHandler : contains >
+SentenceManager *-down- Dictionary : contains >
+
+' Aggregation
+SentenceManager o-right- WordBlock : manages >
+SentenceManager o-right- ItemBox : manages >
+
+' Association
+ItemBox -left- ItemType : uses >
+
+' Dependency
+InitialScreen ..> PlayScreen : creates >
+GameManager ..> SentenceManager : uses >
+GameManager ..> ItemType : uses >
+
+@enduml

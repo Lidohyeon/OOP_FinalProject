@@ -1,0 +1,123 @@
+@startuml ActivityDiagram_ItemBox
+
+title SNOW MAN GAME - ItemBox System Activity Diagram
+
+|SentenceManager|
+start
+
+:Game Start;
+:lastItemBoxSpawnTime = time(nullptr);
+
+repeat
+    
+    |SentenceManager|
+    partition "Item Generation (spawnItemBoxIfNeeded)" {
+        :currentTime = time(nullptr);
+        :elapsedTime = difftime(current, lastItemBoxSpawnTime);
+        
+        if (elapsedTime >= 30.0?) then (yes)
+            :createItemBox(maxWidth, maxHeight);
+            
+            |ItemBox|
+            :Create ItemBox Object;
+            :itemType = rand() % 3;
+            note right
+              0: TIME_BONUS (+10 sec)
+              1: TIME_MINUS (-10 sec)
+              2: SCORE_BOOST (Score x2)
+            end note
+            :x = rand() % (areaWidth - 4) + 1;
+            :y = 3;
+            :fallSpeed = 0.8;
+            :fallAccumulator = 0.0;
+            
+            |SentenceManager|
+            :itemBoxes.push_back(box);
+            :lastItemBoxSpawnTime = current time;
+        endif
+    }
+    
+    |SentenceManager|
+    partition "Item Movement (advanceItemBoxes)" {
+        while (For Each ItemBox)
+            |ItemBox|
+            if (isActive?) then (yes)
+                :fall();
+                :fallAccumulator += fallSpeed;
+                :step = floor(fallAccumulator);
+                
+                if (step > 0?) then (yes)
+                    :y += step;
+                    :fallAccumulator -= step;
+                endif
+                
+                if (y >= maxHeight - 3?) then (yes)
+                    :isActive = false;
+                    :y = maxHeight - 3;
+                    note right
+                      No penalty when
+                      reaching bottom,
+                      simply disappears
+                    end note
+                endif
+            endif
+        endwhile
+    }
+    
+    |SentenceManager|
+    partition "Item Usage (tryUseActiveItemBox)" {
+        if (User typed "random"?) then (yes)
+            :Search Active Item Boxes;
+            :lowestY = -1;
+            :lowestIdx = -1;
+            
+            while (For Each ItemBox)
+                if (isActive && y > lowestY?) then (yes)
+                    :lowestY = y;
+                    :lowestIdx = current index;
+                endif
+            endwhile
+            
+            if (lowestIdx >= 0?) then (yes)
+                |ItemBox|
+                :type = applyRandomEffect();
+                :isActive = false;
+                
+                |GameManager|
+                :applyItemEffect(type);
+                
+                switch (type)
+                case (TIME_BONUS)
+                    :timeAdjustment += 10;
+                    :message = "TIME +10 SECONDS!";
+                case (TIME_MINUS)
+                    :timeAdjustment -= 10;
+                    :message = "TIME -10 SECONDS!";
+                case (SCORE_BOOST)
+                    :scoreMultiplier = 2;
+                    :message = "SCORE MULTIPLIED!";
+                endswitch
+                
+                :lastItemEffectMessage = message;
+                :lastItemEffectTime = time(nullptr);
+                :updateTime();
+                :updateTotalScore();
+                
+                if (remainingTime <= 0?) then (yes)
+                    :gameRunning = false;
+                endif
+                
+                |SentenceManager|
+                :return true;
+            else (no)
+                :return false;
+            endif
+        endif
+    }
+
+|SentenceManager|
+repeat while (gameRunning?) is (yes)
+
+stop
+
+@enduml

@@ -1,0 +1,115 @@
+@startuml ActivityDiagram_WordBlock
+
+title SNOW MAN GAME - WordBlock Generation & Fall Activity Diagram
+
+|GameManager|
+start
+
+:Start Game (startGame);
+:initializeWordOrder();
+note right
+  Fisher-Yates shuffle
+  Creates random array of 0-7
+  e.g., [3,1,7,0,5,2,6,4]
+end note
+
+:Create First Word Block;
+|SentenceManager|
+:createWordBlock(60, wordOrder[0]);
+
+|WordBlock|
+:Create WordBlock Object;
+:x = rand() % (areaWidth - text.length());
+:y = 3 (start from top);
+:Add to wordBlocks;
+
+|GameManager|
+:currentWordIndex = 1;
+:lastWordCreateTime = current time;
+
+repeat
+    
+    |GameManager|
+    partition "Word Generation Check" {
+        :Call shouldCreateWordBlock();
+        
+        if (waitingForCompletion?) then (yes)
+            :Do Not Create;
+        else if (3 seconds elapsed?) then (yes)
+            |SentenceManager|
+            :createWordBlock(58, wordOrder[currentWordIndex]);
+            
+            |WordBlock|
+            :Create New WordBlock;
+            :Calculate Random x Position;
+            :y = 3;
+            :Add to wordBlocks;
+            
+            |GameManager|
+            :currentWordIndex++;
+            :currentWordIndex %= 8;
+            :lastWordCreateTime = current time;
+        endif
+    }
+    
+    |GameManager|
+    partition "Word Movement Check" {
+        :Call shouldUpdateWordBlocks();
+        
+        if (1 second elapsed?) then (yes)
+            |SentenceManager|
+            :advanceWordBlocks(maxHeight);
+            
+            |WordBlock|
+            while (For Each Active WordBlock)
+                if (isActive && !isInInput?) then (yes)
+                    :fall();
+                    :y += fallSpeed;
+                    
+                    if (y >= maxHeight - 3?) then (yes)
+                        :hasReachedBottom = true;
+                        :y = maxHeight - 3;
+                        
+                        |SentenceManager|
+                        :timePanalty = true;
+                    endif
+                endif
+            endwhile
+            
+            |GameManager|
+            :lastWordRenderTime = current time;
+            
+            if (timePanalty?) then (yes)
+                :applyTimePenalty(10);
+                :remainingTime -= 10;
+                
+                |SentenceManager|
+                :setTimePanalty(false);
+                
+                |GameManager|
+                if (remainingTime <= 0?) then (yes)
+                    :gameRunning = false;
+                endif
+            endif
+        endif
+    }
+    
+    |GameManager|
+    partition "Completion Check" {
+        if (correctMatches == 8 && !waitingForCompletion?) then (yes)
+            :waitingForCompletion = true;
+            
+            note right
+                After 2 seconds,
+                prepareNextRound() called
+                in PlayScreen
+            end note
+        endif
+    }
+
+repeat while (gameRunning?) is (yes)
+
+|GameManager|
+stop
+
+@enduml

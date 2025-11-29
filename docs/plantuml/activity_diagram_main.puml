@@ -1,0 +1,136 @@
+@startuml ActivityDiagram_Main
+
+title SNOW MAN GAME - Main Game Flow Activity Diagram
+
+start
+
+:Execute Game;
+note right: main.cpp entry point
+
+:Create InitialScreen;
+:Display Initial Screen;
+
+:Select Level;
+note right
+  1: Easy (180 sec)
+  2: Medium (150 sec)
+  3: Hard (120 sec)
+end note
+
+switch (User Input)
+case (UP/DOWN key)
+    :Change Level;
+    backward:Select Level;
+case (P key)
+    :Select PLAY;
+case (Q key)
+    :Exit;
+    stop
+endswitch
+
+:endwin() - Close Initial Screen;
+
+partition "PlayScreen Initialization" {
+    :Create PlayScreen Object;
+    :Initialize ncurses;
+    :Setup Colors;
+    :Create GameManager;
+    :Create SentenceManager;
+    :Load Random Sentence from Dictionary;
+    :Generate Random wordOrder;
+    :Start Game (startGame);
+}
+
+:Start Game Loop;
+
+repeat
+    
+    partition "Screen Update (UpdateScreen)" {
+        :clear();
+        
+        fork
+            :gameManager->updateTime();
+            note right: Calculate remaining time
+        fork again
+            :spawnItemBoxIfNeeded();
+            note right: Spawn item every 30 sec
+        fork again
+            :Check Snowman Completion;
+        end fork
+        
+        if (Snowman Complete && 2 sec elapsed?) then (yes)
+            :showCompletedSnowman = false;
+            :Reset Input Fields;
+            :prepareNextRound();
+            :Load New Sentence;
+        endif
+        
+        if (shouldUpdateWordBlocks?) then (yes)
+            :advanceWordBlocks();
+            :advanceItemBoxes();
+            
+            if (timePanalty?) then (yes)
+                :applyTimePenalty(10);
+            endif
+        endif
+        
+        :handleWordGeneration();
+        
+        if (checkGameEnd?) then (yes)
+            :gameRunning = false;
+        endif
+        
+        :drawFrame();
+        :drawBackgroundEffect();
+        :Render Word Blocks;
+        :Render Item Boxes;
+        :drawInfoPanel();
+        :refresh();
+    }
+    
+    partition "Input Processing" {
+        :timeout(50);
+        :key = getch();
+        
+        if (key != ERR?) then (yes)
+            switch (key)
+            case (ESC)
+                :gameRunning = false;
+            case (TAB / DOWN)
+                :nextInput();
+            case (UP)
+                :previousInput();
+            case (other)
+                :handleInput(key);
+                
+                if (ENTER && input submitted?) then (yes)
+                    if (input == "random"?) then (yes)
+                        :tryUseActiveItemBox();
+                        if (success?) then (yes)
+                            :applyItemEffect();
+                        endif
+                    endif
+                    :checkAnswers();
+                endif
+            endswitch
+        endif
+    }
+    
+repeat while (gameRunning?) is (yes)
+
+:endGame();
+:calculateTimeBonus();
+
+:Display GAME OVER Screen;
+:Display Final Score;
+
+:getch() - Wait for any key;
+:endwin();
+
+:Destroy PlayScreen;
+
+:Restore InitialScreen;
+
+stop
+
+@enduml

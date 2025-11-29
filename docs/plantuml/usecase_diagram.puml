@@ -1,0 +1,104 @@
+@startuml UseCaseDiagram
+
+left to right direction
+skinparam actorStyle awesome
+skinparam usecase {
+    BackgroundColor LightBlue
+    BorderColor DarkBlue
+    ArrowColor DarkBlue
+}
+
+title SNOW MAN GAME - Use-Case Diagram
+
+actor "Player" as player
+
+rectangle "SNOW MAN GAME System" {
+    
+    ' =====================================
+    ' Main Use Cases
+    ' =====================================
+    usecase "UC1: Start Game" as UC1
+    usecase "UC2: Select Level" as UC2
+    usecase "UC3: Play Game" as UC3
+    usecase "UC4: End Game" as UC4
+    
+    ' =====================================
+    ' Gameplay Use Cases
+    ' =====================================
+    usecase "UC5: Type Word" as UC5
+    usecase "UC6: Navigate Input Field" as UC6
+    usecase "UC7: Use Item" as UC7
+    usecase "UC8: Earn Score" as UC8
+    usecase "UC9: Complete Snowman" as UC9
+    
+    ' =====================================
+    ' Extension/Inclusion Use Cases
+    ' =====================================
+    usecase "UC10: Time Bonus (+10s)" as UC10
+    usecase "UC11: Time Penalty (-10s)" as UC11
+    usecase "UC12: Score Multiplier (x2)" as UC12
+    usecase "UC13: Fall Penalty" as UC13
+    usecase "UC14: Next Sentence" as UC14
+    
+    ' =====================================
+    ' System Use Cases
+    ' =====================================
+    usecase "UC15: Create WordBlock" as UC15
+    usecase "UC16: WordBlock Fall" as UC16
+    usecase "UC17: Manage Time" as UC17
+    usecase "UC18: Calculate Score" as UC18
+}
+
+' =====================================
+' Player - Use Case Connections
+' =====================================
+player --> UC1
+player --> UC2
+player --> UC3
+player --> UC4
+player --> UC5
+player --> UC6
+player --> UC7
+
+' =====================================
+' Include Relationships
+' =====================================
+UC1 ..> UC2 : <<include>>
+UC3 ..> UC5 : <<include>>
+UC3 ..> UC15 : <<include>>
+UC3 ..> UC16 : <<include>>
+UC3 ..> UC17 : <<include>>
+UC5 ..> UC18 : <<include>>
+
+' =====================================
+' Extend Relationships
+' =====================================
+UC7 ..> UC10 : <<extend>>\n[TIME_BONUS item]
+UC7 ..> UC11 : <<extend>>\n[TIME_MINUS item]
+UC7 ..> UC12 : <<extend>>\n[SCORE_BOOST item]
+UC16 ..> UC13 : <<extend>>\n[when reaches bottom]
+UC9 ..> UC14 : <<extend>>
+UC9 ..> UC8 : <<extend>>
+
+' =====================================
+' Use Case Connections
+' =====================================
+UC5 --> UC9 : when 8 words\ncompleted
+
+note right of UC2
+  Level 1: Easy (3 min)
+  Level 2: Medium (2 min 30 sec)
+  Level 3: Hard (2 min)
+end note
+
+note right of UC7
+  Type 'random' to use
+  active item box
+end note
+
+note bottom of UC13
+  When word reaches bottom
+  -10 seconds penalty
+end note
+
+@enduml
